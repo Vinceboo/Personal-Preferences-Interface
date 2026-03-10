@@ -1,0 +1,3432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>个人偏好设置</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fff4ed',
+                            100: '#ffe5d4',
+                            500: '#ff6a2c', // 主题暖橘色
+                            600: '#e55a22',
+                        },
+                        bgbase: '#fffcf9' // 温馨浅米黄背景
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .gradient-header {
+            background: linear-gradient(180deg, #fff0e5 0%, #fffcf9 100%);
+        }
+
+        /* 隐藏滚动条但保留滚动功能 */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Toast 样式 */
+        #toast-container {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast-item {
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: toast-in-out 2.5s ease-in-out forwards;
+        }
+
+        @keyframes toast-in-out {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            15% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            85% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-bgbase text-gray-800 h-[100dvh] flex flex-col pt-12 relative overflow-hidden">
+
+    <!-- 头部背景渐变区域 -->
+    <div class="absolute top-0 left-0 right-0 h-64 gradient-header -z-10"></div>
+
+    <!-- 顶部导航栏 -->
+    <header class="flex justify-between items-center px-4 py-2 z-10 sticky top-0 shrink-0">
+        <button
+            class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 active:bg-black/10 transition">
+            <i class="fa-solid fa-chevron-left text-xl text-gray-800"></i>
+        </button>
+    </header>
+
+    <!-- 整体内容滑动区 -->
+    <main class="flex-1 overflow-y-auto w-full hide-scrollbar z-10 pt-6 pb-32">
+        <!-- 基本信息卡片 -->
+        <div class="px-4 relative mb-4">
+            <div
+                class="bg-white rounded-[24px] shadow-[0_8px_30px_-12px_rgba(0,0,0,0.06)] p-5 relative overflow-hidden">
+                <!-- 标题区 -->
+                <div class="mb-5 flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded bg-brand-50 flex items-center justify-center text-brand-500">
+                                <i class="fa-regular fa-file-lines text-xs"></i>
+                            </div>
+                            <h2 class="text-[16px] font-bold text-gray-800">填写考生成绩</h2>
+                            <span
+                                class="bg-blue-50 text-blue-500 text-[10px] px-1.5 py-0.5 rounded-sm font-medium ml-1">必填</span>
+                        </div>
+                    </div>
+                    <div
+                        class="shrink-0 flex items-center text-right text-[11px] font-medium leading-none text-gray-400">
+                        <span id="display-province">北京</span>
+                        <span class="px-1 text-gray-300">·</span>
+                        <span id="display-year">2026年</span>
+                    </div>
+                </div>
+
+                <!-- 表单内容区 -->
+                <!-- 表单内容区 -->
+                <div class="flex flex-col">
+                    <!-- 1. 成绩类型 -->
+                    <div class="flex items-center justify-between py-3.5">
+                        <span class="text-[15px] text-gray-600 font-medium">成绩类型</span>
+                        <div class="flex bg-gray-50/80 p-1 rounded-full relative w-[130px]">
+                            <button id="btn-benke"
+                                class="w-1/2 py-1 text-[13px] font-bold rounded-full text-brand-500 bg-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] z-10 transition-all"
+                                onclick="switchGradeType('ben')">本科</button>
+                            <button id="btn-zhuanke"
+                                class="w-1/2 py-1 text-[13px] font-medium rounded-full text-gray-500 z-10 transition-all"
+                                onclick="switchGradeType('zhuan')">专科</button>
+                        </div>
+                    </div>
+
+                    <!-- 4. 联动区域 -->
+                    <div id="wrapper-benke" class="flex flex-col">
+                        <!--选科-->
+                        <div class="flex items-center justify-between py-3.5" onclick="openDrawer('subject-drawer')">
+                            <span class="text-[15px] text-gray-600 font-medium">选考科目</span>
+                            <div class="flex items-center gap-2">
+                                <span id="display-subject" class="text-[15px] text-brand-500 font-medium">请选择3科</span>
+                                <i class="fa-solid fa-chevron-down text-gray-300 text-[10px] mt-[1px]"></i>
+                            </div>
+                        </div>
+                        <!--总分-->
+                        <div class="flex items-center justify-between py-3.5">
+                            <span class="text-[15px] text-gray-600 font-medium">高考总分</span>
+                            <div class="flex items-center gap-1.5">
+                                <input type="tel" placeholder="在此输入"
+                                    class="text-right text-[15px] font-medium text-gray-900 w-[80px] bg-transparent outline-none placeholder-gray-300">
+                                <span class="text-gray-400 text-[14px]">分</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="wrapper-zhuanke" class="flex flex-col hidden">
+                        <!--语数外总分-->
+                        <div class="flex items-center justify-between py-3.5">
+                            <span class="text-[15px] text-gray-600 font-medium">语数外总分</span>
+                            <div class="flex items-center gap-1.5">
+                                <input type="tel" placeholder="语数外成绩"
+                                    class="text-right text-[15px] font-medium text-gray-900 w-[100px] bg-transparent outline-none placeholder-gray-300">
+                                <span class="text-gray-400 text-[14px]">分</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 个人偏好大卡片 (新增容器) -->
+        <div class="px-4 relative mb-10 z-10">
+            <div
+                class="bg-white rounded-[24px] shadow-[0_8px_30px_-12px_rgba(0,0,0,0.06)] pt-5 pb-6 px-1 relative overflow-hidden">
+                <!-- 卡片头部标题与引导语 -->
+                <div class="px-4 mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="w-6 h-6 rounded bg-brand-50 flex items-center justify-center text-brand-500">
+                            <i class="fa-solid fa-bookmark text-xs"></i>
+                        </div>
+                        <h2 class="text-[16px] font-bold text-gray-800">填写个人偏好</h2>
+                        <span
+                            class="bg-brand-50 text-brand-500 text-[10px] px-1.5 py-0.5 rounded-sm font-medium ml-1">已填
+                            0/4</span>
+                    </div>
+                    <p class="text-[13px] text-brand-500 font-medium mb-1">完善信息生成专属志愿报告</p>
+                    <p class="text-[11px] text-gray-400">信息填写越完整，生成的报告 <span
+                            class="text-gray-600 font-semibold">更精准全面</span></p>
+                </div>
+
+                <div class="h-[1px] w-full bg-gray-50/80 mb-2"></div>
+
+                <!-- Tab 导航区 -->
+                <div class="px-2 z-10">
+                    <div class="flex w-full justify-around relative">
+                        <!-- 底部极淡的分割线留白 -->
+                        <div class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200/40 rounded-full"></div>
+
+                        <button onclick="switchTab('college')"
+                            class="tab-btn pb-3 px-2 flex flex-col items-center gap-1.5 group relative">
+                            <span class="text-[15px] font-bold text-gray-900 transition-colors tab-text"
+                                id="tab-text-college">院校</span>
+                            <div class="h-[4px] w-6 rounded-full bg-brand-500 transition-all tab-line"
+                                id="tab-line-college"></div>
+                        </button>
+                        <button onclick="switchTab('major')"
+                            class="tab-btn pb-3 px-2 flex flex-col items-center gap-1.5 group relative">
+                            <span class="text-[15px] font-normal text-gray-500 transition-colors tab-text"
+                                id="tab-text-major">专业</span>
+                            <div class="h-[4px] w-0 rounded-full bg-brand-500 transition-all tab-line"
+                                id="tab-line-major"></div>
+                        </button>
+                        <button onclick="switchTab('region')"
+                            class="tab-btn pb-3 px-2 flex flex-col items-center gap-1.5 group relative">
+                            <span class="text-[15px] font-normal text-gray-500 transition-colors tab-text"
+                                id="tab-text-region">地区</span>
+                            <div class="h-[4px] w-0 rounded-full bg-brand-500 transition-all tab-line"
+                                id="tab-line-region"></div>
+                        </button>
+                        <button onclick="switchTab('more')"
+                            class="tab-btn pb-3 px-2 flex flex-col items-center gap-1.5 group relative">
+                            <span class="text-[15px] font-normal text-gray-500 transition-colors tab-text"
+                                id="tab-text-more">更多</span>
+                            <div class="h-[4px] w-0 rounded-full bg-brand-500 transition-all tab-line"
+                                id="tab-line-more"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 内容滑动区 -->
+                <div class="mt-4 px-2">
+                    <!-- 更多 Tab 内容 (列表卡片) -->
+                    <div id="content-more" class="content-section bg-gray-50/50 rounded-[20px] p-1.5 hidden">
+                        <!-- 列表项 1 -->
+                        <div
+                            class="flex items-center justify-between p-3.5 border-b border-white last:border-0 hover:bg-white rounded-[16px] transition-colors">
+                            <span class="text-[14px] font-medium text-gray-800">民办院校</span>
+                            <!-- Segmented Control 小胶囊开关 -->
+                            <div class="flex bg-gray-100/80 p-1 rounded-full relative">
+                                <button
+                                    class="w-[56px] py-[4px] text-[12px] font-medium rounded-full text-gray-500 z-10 transition-all">不考虑</button>
+                                <button
+                                    class="w-[56px] py-[4px] text-[12px] font-bold rounded-full text-brand-500 bg-white shadow-sm z-10 transition-all">考虑</button>
+                            </div>
+                        </div>
+
+                        <!-- 列表项 2 -->
+                        <div
+                            class="flex items-center justify-between p-3.5 border-b border-white last:border-0 hover:bg-white rounded-[16px] transition-colors">
+                            <span class="text-[14px] font-medium text-gray-800">新增院校/专业</span>
+                            <div class="flex bg-gray-100/80 p-1 rounded-full relative">
+                                <button
+                                    class="w-[56px] py-[4px] text-[12px] font-medium rounded-full text-gray-500 z-10 transition-all">不考虑</button>
+                                <button
+                                    class="w-[56px] py-[4px] text-[12px] font-bold rounded-full text-brand-500 bg-white shadow-sm z-10 transition-all">考虑</button>
+                            </div>
+                        </div>
+
+                        <!-- 列表项 3 -->
+                        <div
+                            class="flex items-center justify-between p-3.5 border-b border-white last:border-0 hover:bg-white rounded-[16px] transition-colors">
+                            <span class="text-[14px] font-medium text-gray-800">中外合作专业</span>
+                            <div class="flex bg-gray-100/80 p-1 rounded-full relative">
+                                <button
+                                    class="w-[56px] py-[4px] text-[12px] font-medium rounded-full text-gray-500 z-10 transition-all">不考虑</button>
+                                <button
+                                    class="w-[56px] py-[4px] text-[12px] font-bold rounded-full text-brand-500 bg-white shadow-sm z-10 transition-all">考虑</button>
+                            </div>
+                        </div>
+
+                        <!-- 列表项 4 (处于"不考虑"状态的样式) -->
+                        <div
+                            class="flex items-center justify-between p-3.5 border-b border-white last:border-0 hover:bg-white rounded-[16px] transition-colors">
+                            <span class="text-[14px] font-medium text-gray-800">定向/专项专业</span>
+                            <div class="flex bg-gray-200/50 p-1 rounded-full relative">
+                                <button
+                                    class="w-[56px] py-[4px] text-[12px] font-bold rounded-full text-gray-600 bg-white shadow-sm z-10 transition-all">不考虑</button>
+                                <button
+                                    class="w-[56px] py-[4px] text-[12px] font-medium rounded-full text-gray-400 z-10 transition-all">考虑</button>
+                            </div>
+                        </div>
+
+                        <div
+                            class="flex items-center justify-between p-3.5 border-b border-white last:border-0 hover:bg-white rounded-[16px] transition-colors">
+                            <span class="text-[14px] font-medium text-gray-800">少数民族/预科专业</span>
+                            <div class="flex bg-gray-200/50 p-1 rounded-full relative">
+                                <button
+                                    class="w-[56px] py-[4px] text-[12px] font-bold rounded-full text-gray-600 bg-white shadow-sm z-10 transition-all">不考虑</button>
+                                <button
+                                    class="w-[56px] py-[4px] text-[12px] font-medium rounded-full text-gray-400 z-10 transition-all">考虑</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 地区 Tab 内容 -->
+                    <div id="content-region" class="content-section hidden">
+                        <div class="space-y-3 px-1">
+                            <section id="section-consider-regions"
+                                class="rounded-[20px] border border-brand-100/70 bg-[linear-gradient(180deg,rgba(255,244,237,0.82)_0%,rgba(255,252,249,0.96)_100%)] p-4 pt-3 mt-1">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-center justify-between w-full">
+                                            <h3 id="consider-region-title" class="text-[13px] font-bold text-gray-800">
+                                                优先考虑地区（0个）
+                                            </h3>
+                                            <div id="consider-region-header-actions" class="flex items-center gap-2">
+                                            </div>
+                                        </div>
+                                        <p id="consider-region-summary" class="text-[11px] text-gray-500 mt-1">
+                                            可先用快捷地区包，再逐个微调
+                                        </p>
+                                    </div>
+                                    <button id="consider-region-sort-entry" type="button"
+                                        onclick="toggleRegionSortMode()"
+                                        class="hidden shrink-0 items-center gap-1.5 rounded-[12px] bg-brand-50 px-3 py-2 text-[11px] font-semibold text-brand-500 shadow-[inset_0_0_0_1px_rgba(255,106,44,0.12)] active:scale-[0.98] transition-all">
+                                        <i class="fa-solid fa-arrow-down-short-wide text-[10px]"></i>
+                                        <span>意向排序</span>
+                                    </button>
+                                </div>
+                                <div id="region-preset-container" class="mt-3 flex flex-wrap gap-2"></div>
+
+                                <div id="consider-region-empty"
+                                    class="mt-3 rounded-[16px] border border-dashed border-gray-200 bg-white/70 px-4 py-4 text-[12px] text-gray-400">
+                                    暂未设置优先考虑地区，可先使用快捷地区包或在下方逐个标记
+                                </div>
+
+                                <div id="consider-region-tags-wrapper" class="hidden mt-3">
+                                    <div id="consider-region-tags"
+                                        class="flex flex-wrap gap-2 overflow-hidden transition-all duration-200"></div>
+                                    <button id="consider-region-expand-btn" type="button"
+                                        onclick="toggleConsiderRegionExpand()"
+                                        class="hidden mt-3 text-[12px] font-semibold text-brand-500">
+                                        展开全部
+                                    </button>
+                                </div>
+
+                                <div id="consider-region-sort-panel" class="hidden mt-4 border-t border-white pt-4">
+                                    <div class="mb-3 flex items-center justify-between gap-3">
+                                        <p class="text-[11px] text-gray-500">长按拖动优先考虑地区，越靠前优先级越高</p>
+                                        <span
+                                            class="shrink-0 rounded-full bg-brand-50 px-2 py-1 text-[10px] font-semibold text-brand-500">前高后低</span>
+                                    </div>
+                                    <div id="consider-region-sort-list" class="space-y-2"></div>
+                                </div>
+                            </section>
+
+                            <section id="section-avoid-regions" class="rounded-[20px] bg-gray-50/80 p-4">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex-1">
+                                        <div class="flex items-center justify-between w-full">
+                                            <h3 id="avoid-region-title" class="text-[13px] font-bold text-gray-800">
+                                                不考虑地区（0个）
+                                            </h3>
+                                            <div id="avoid-region-header-actions" class="flex items-center"></div>
+                                        </div>
+                                        <p id="avoid-region-summary" class="text-[11px] text-gray-500 mt-1">
+                                            明确排除后，推荐会避开这些地区
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div id="avoid-region-empty"
+                                    class="mt-3 rounded-[16px] border border-dashed border-gray-200 bg-white/70 px-4 py-4 text-[12px] text-gray-400">
+                                    暂未设置不考虑地区
+                                </div>
+
+                                <div id="avoid-region-tags-wrapper" class="hidden mt-3">
+                                    <div id="avoid-region-tags" class="flex flex-wrap gap-2"></div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 院校 Tab 内容 -->
+                <div id="content-college" class="content-section">
+                    <div class="space-y-3 px-1">
+                        <section class="rounded-[20px] bg-gray-50/80 p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <h3 class="text-[13px] font-bold text-gray-800">院校偏好</h3>
+                                </div>
+                                <button id="college-primary-action" type="button" onclick="openCollegeDrawer()"
+                                    class="shrink-0 rounded-[12px] bg-brand-50 px-3 py-2 text-[11px] font-semibold text-brand-500 shadow-[inset_0_0_0_1px_rgba(255,106,44,0.12)] active:scale-[0.98] transition-all">
+                                    添加院校
+                                </button>
+                            </div>
+
+                            <div id="college-empty-state"
+                                class="mt-4 rounded-[16px] border border-dashed border-gray-200 bg-white/70 px-4 py-6 text-center">
+                                <div
+                                    class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-300">
+                                    <i class="fa-solid fa-building-columns text-[18px]"></i>
+                                </div>
+                                <p class="text-[13px] font-medium text-gray-500">还没有添加院校</p>
+                                <button type="button" onclick="openCollegeDrawer()"
+                                    class="mt-4 rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-[12px] font-semibold text-brand-500 active:scale-[0.98] transition-all">
+                                    <i class="fa-solid fa-plus mr-1 text-[10px]"></i> 去添加院校
+                                </button>
+                            </div>
+
+                            <div id="college-selected-state" class="hidden mt-3">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-[12px] font-semibold text-gray-500">已选院校（<span
+                                                    id="selected-college-count">0</span>）</p>
+                                            <button type="button" onclick="clearAllCollegeSelection()"
+                                                class="text-[11px] font-medium text-brand-500 active:text-brand-600 transition-colors px-1.5 py-0.5 rounded hover:bg-brand-50">
+                                                清空全部
+                                            </button>
+                                        </div>
+                                        <p id="selected-college-caption" class="mt-1 text-[11px] text-gray-400">
+                                            支持继续补充
+                                        </p>
+                                    </div>
+                                </div>
+                                <div id="selected-college-list" class="mt-3 space-y-2"></div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- 专业 Tab 内容 -->
+                <div id="content-major" class="content-section hidden">
+                    <div class="space-y-3 px-1">
+                        <section class="rounded-[20px] bg-gray-50/80 p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <h3 class="text-[13px] font-bold text-gray-800">专业偏好</h3>
+                                    <p id="major-panel-summary" class="mt-1 text-[11px] text-gray-500">
+                                        支持多选专业，搜索和浏览都在抽屉里完成
+                                    </p>
+                                </div>
+                                <button id="major-primary-action" type="button" onclick="openMajorDrawer()"
+                                    class="shrink-0 rounded-[12px] bg-brand-50 px-3 py-2 text-[11px] font-semibold text-brand-500 shadow-[inset_0_0_0_1px_rgba(255,106,44,0.12)] active:scale-[0.98] transition-all">
+                                    添加专业
+                                </button>
+                            </div>
+
+                            <div id="major-empty-state"
+                                class="mt-3 rounded-[16px] border border-dashed border-gray-200 bg-white/70 px-4 py-6 text-center">
+                                <div
+                                    class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-300">
+                                    <i class="fa-solid fa-book-open text-[18px]"></i>
+                                </div>
+                                <p class="text-[13px] font-medium text-gray-500">还没有添加专业</p>
+                                <button type="button" onclick="openMajorDrawer()"
+                                    class="mt-4 rounded-full border border-brand-100 bg-brand-50 px-4 py-2 text-[12px] font-semibold text-brand-500 active:scale-[0.98] transition-all">
+                                    <i class="fa-solid fa-plus mr-1 text-[10px]"></i> 去添加专业
+                                </button>
+                            </div>
+
+                            <div id="major-selected-state" class="hidden mt-3">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-[12px] font-semibold text-gray-500">已选专业（<span
+                                                    id="selected-major-count">0</span>）</p>
+                                            <button type="button" onclick="clearAllMajorSelection()"
+                                                class="text-[11px] font-medium text-brand-500 active:text-brand-600 transition-colors px-1.5 py-0.5 rounded hover:bg-brand-50">
+                                                清空全部
+                                            </button>
+                                        </div>
+                                        <p id="selected-major-caption" class="mt-1 text-[11px] text-gray-400">
+                                            支持继续补充
+                                        </p>
+                                    </div>
+                                </div>
+                                <div id="selected-major-tags" class="mt-3 space-y-2"></div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    </main>
+
+    <!-- 底部固定吸底悬浮按钮 -->
+    <div
+        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-bgbase via-bgbase/98 to-transparent pt-24 pb-8 px-6 z-20 pointer-events-none flex flex-col gap-4">
+
+        <!-- 新增：自动补齐志愿表 全局开关 -->
+        <div
+            class="pointer-events-auto flex items-center justify-between mt-auto bg-white/80 backdrop-blur-md px-4 py-3 rounded-2xl shadow-[0_4px_20px_-8px_rgba(0,0,0,0.08)] border border-white/50">
+            <div class="flex flex-col">
+                <span class="text-[13px] font-bold text-gray-800">自动补齐志愿表</span>
+                <span class="text-[11px] text-gray-500 mt-0.5">当志愿数不足时，将自动补充推荐</span>
+            </div>
+            <!-- Switch 开关 -->
+            <button type="button"
+                class="relative inline-flex h-[24px] w-[44px] shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out bg-brand-500 focus:outline-none shadow-sm"
+                role="switch" aria-checked="true"
+                onclick="this.classList.toggle('bg-brand-500'); this.classList.toggle('bg-gray-200'); this.querySelector('span').classList.toggle('translate-x-5'); this.querySelector('span').classList.toggle('translate-x-0');">
+                <span aria-hidden="true"
+                    class="translate-x-5 pointer-events-none inline-block h-[20px] w-[20px] transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+            </button>
+        </div>
+
+        <div class="flex gap-4">
+            <button id="cancel-btn"
+                class="pointer-events-auto flex-1 bg-white text-gray-700 font-bold text-[16px] py-[14px] rounded-full border border-gray-200 shadow-sm active:scale-[0.98] transition-all flex justify-center items-center">
+                取消
+            </button>
+            <button id="confirm-btn" onclick="handleConfirm()"
+                class="pointer-events-auto flex-1 bg-brand-500 text-white font-bold text-[16px] py-[14px] rounded-full shadow-[0_12px_24px_-8px_rgba(255,106,44,0.5)] active:scale-[0.98] transition-all flex justify-center items-center gap-2">
+                <span id="confirm-btn-text">确认</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ======== 全局弹窗与抽屉区域 ======== -->
+    <!-- 背景遮罩 -->
+    <div id="global-overlay"
+        class="fixed inset-0 bg-black/40 z-[100] opacity-0 pointer-events-none transition-opacity duration-300"
+        onclick="closeAllDrawers()"></div>
+
+    <!-- 1. 选科选择抽屉 -->
+    <div id="subject-drawer"
+        class="fixed bottom-0 left-0 right-0 bg-white rounded-t-[24px] z-[110] transform translate-y-full transition-transform duration-300 pb-10 flex flex-col max-h-[85vh]">
+        <div class="flex justify-between items-center px-5 py-4 border-b border-gray-100 shrink-0">
+            <div class="flex flex-col">
+                <span class="text-[16px] font-bold text-gray-800">选择选考科目</span>
+                <span class="text-[12px] text-gray-500 mt-0.5" id="subject-limit-text">请选择3课（已选 <span id="subject-count"
+                        class="text-brand-500 font-bold">0</span>/3）</span>
+            </div>
+            <button onclick="closeAllDrawers()"
+                class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500"><i
+                    class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="px-5 py-6 overflow-y-auto flex-1">
+            <div class="grid grid-cols-3 gap-4">
+                <button
+                    class="subj-btn relative py-3 rounded-xl border-2 border-transparent bg-gray-50 text-gray-700 font-medium text-[15px] transition-all"
+                    data-val="物理" onclick="toggleSubject(this)">物理</button>
+                <button
+                    class="subj-btn relative py-3 rounded-xl border-2 border-transparent bg-gray-50 text-gray-700 font-medium text-[15px] transition-all"
+                    data-val="化学" onclick="toggleSubject(this)">化学</button>
+                <button
+                    class="subj-btn relative py-3 rounded-xl border-2 border-transparent bg-gray-50 text-gray-700 font-medium text-[15px] transition-all"
+                    data-val="生物" onclick="toggleSubject(this)">生物</button>
+                <button
+                    class="subj-btn relative py-3 rounded-xl border-2 border-transparent bg-gray-50 text-gray-700 font-medium text-[15px] transition-all"
+                    data-val="历史" onclick="toggleSubject(this)">历史</button>
+                <button
+                    class="subj-btn relative py-3 rounded-xl border-2 border-transparent bg-gray-50 text-gray-700 font-medium text-[15px] transition-all"
+                    data-val="政治" onclick="toggleSubject(this)">政治</button>
+                <button
+                    class="subj-btn relative py-3 rounded-xl border-2 border-transparent bg-gray-50 text-gray-700 font-medium text-[15px] transition-all"
+                    data-val="地理" onclick="toggleSubject(this)">地理</button>
+            </div>
+        </div>
+        <div class="px-5 pt-2 shrink-0">
+            <!-- 确认按钮，初始为 disabled 浅色态 -->
+            <button id="subject-confirm-btn" onclick="confirmSubjects()" disabled
+                class="w-full bg-gray-300 text-white font-bold text-[16px] py-[14px] rounded-full transition-colors flex justify-center items-center">
+                确认选择
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. 院校选择抽屉 -->
+    <div id="college-drawer"
+        class="fixed bottom-0 left-0 right-0 bg-white rounded-t-[24px] z-[110] transform translate-y-full transition-transform duration-300 pb-6 flex flex-col h-[82vh] max-h-[90vh]">
+
+        <!-- 抽屉头部 -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+            <div class="flex flex-col">
+                <span id="college-drawer-title" class="text-[16px] font-bold text-gray-800">选择院校</span>
+                <span id="college-drawer-summary" class="mt-0.5 text-[12px] text-gray-500">支持按多维度条件筛选</span>
+            </div>
+            <button id="college-drawer-close-btn" onclick="handleCollegeDrawerClose()"
+                class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- ===== 列表视图 ===== -->
+        <div id="college-list-view" class="flex flex-col min-h-0 flex-1">
+            <div class="px-5 pt-4 shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 rounded-[16px] border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass text-[12px] text-gray-300"></i>
+                            <input id="college-drawer-search-input" type="text"
+                                oninput="updateCollegeDrawerSearch(this.value)"
+                                class="flex-1 bg-transparent text-[13px] text-gray-800 outline-none placeholder:text-gray-300"
+                                placeholder="搜索院校名称">
+                            <button id="college-drawer-search-clear" type="button" onclick="clearCollegeDrawerSearch()"
+                                class="hidden h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-gray-400 active:bg-gray-100">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="switchToFilterView()"
+                        class="shrink-0 flex items-center gap-1.5 rounded-[16px] border border-gray-100 bg-gray-50/80 px-3.5 py-2.5 text-[13px] font-semibold text-gray-600 active:bg-gray-100 transition-all">
+                        <i class="fa-solid fa-sliders text-[12px]"></i>
+                        <span>筛选</span>
+                        <span id="college-filter-badge"
+                            class="hidden ml-0.5 flex items-center justify-center rounded-full bg-brand-500 text-white text-[10px] font-bold w-[18px] h-[18px] leading-none"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 已激活的筛选条件标签 -->
+            <div id="college-active-filter-chips" class="px-5 pt-2.5 shrink-0 hidden">
+                <div class="flex flex-wrap gap-1.5" id="college-active-filter-chips-list"></div>
+            </div>
+
+            <div class="px-5 pt-2.5 shrink-0">
+                <div class="flex items-center justify-between gap-3 px-1">
+                    <p id="college-drawer-selected-meta" class="text-[11px] text-gray-500">已选 0 所院校</p>
+                    <button type="button" onclick="clearCollegeDrawerSelection()"
+                        class="text-[11px] font-semibold text-brand-500">
+                        清空已选
+                    </button>
+                </div>
+            </div>
+
+            <div id="college-drawer-list" class="min-h-0 flex-1 overflow-y-auto px-5 pt-3 pb-2"></div>
+
+            <div class="px-5 pt-4 shrink-0">
+                <button id="college-confirm-btn" onclick="confirmCollegeSelection()"
+                    class="w-full bg-brand-500 text-white font-bold text-[16px] py-[14px] rounded-full shadow-[0_8px_20px_-6px_rgba(255,106,44,0.5)] active:scale-[0.98] transition-all flex justify-center items-center">
+                    确认选择
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== 筛选视图 ===== -->
+        <div id="college-filter-view" class="hidden flex flex-col min-h-0 flex-1">
+            <div id="college-filter-view-content" class="flex-1 overflow-y-auto px-5 pt-4 pb-4"></div>
+            <div class="px-5 pt-2 shrink-0 flex gap-3">
+                <button type="button" onclick="resetCollegeFilters()"
+                    class="flex-1 bg-white text-gray-700 font-bold text-[15px] py-[13px] rounded-full border border-gray-200 shadow-sm active:scale-[0.98] transition-all">
+                    重置
+                </button>
+                <button type="button" onclick="confirmCollegeFilters()"
+                    class="flex-1 bg-brand-500 text-white font-bold text-[15px] py-[13px] rounded-full shadow-[0_8px_20px_-6px_rgba(255,106,44,0.5)] active:scale-[0.98] transition-all">
+                    确定
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. 专业选择抽屉 -->
+    <div id="major-drawer"
+        class="fixed bottom-0 left-0 right-0 bg-white rounded-t-[24px] z-[110] transform translate-y-full transition-transform duration-300 pb-6 flex flex-col h-[80vh] max-h-[88vh]">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+            <div class="flex flex-col">
+                <span class="text-[16px] font-bold text-gray-800">选择专业</span>
+                <span id="major-drawer-summary" class="mt-0.5 text-[12px] text-gray-500">可多选，支持搜索和分类浏览</span>
+            </div>
+            <button onclick="closeAllDrawers()"
+                class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+
+
+        <div class="px-5 pt-3 shrink-0">
+            <div class="rounded-[16px] border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass text-[12px] text-gray-300"></i>
+                    <input id="major-drawer-search-input" type="text" oninput="updateMajorDrawerSearch(this.value)"
+                        class="flex-1 bg-transparent text-[13px] text-gray-800 outline-none placeholder:text-gray-300"
+                        placeholder="搜索专业名称、专业类">
+                    <button id="major-drawer-search-clear" type="button" onclick="clearMajorDrawerSearch()"
+                        class="hidden h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-gray-400 active:bg-gray-100">
+                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mt-3 flex items-center justify-between gap-3 px-1">
+                <p id="major-drawer-selected-meta" class="text-[11px] text-gray-500">已选 0 个专业</p>
+                <button type="button" onclick="clearMajorDrawerSelection()"
+                    class="text-[11px] font-semibold text-brand-500">
+                    清空已选
+                </button>
+            </div>
+        </div>
+
+        <div id="major-drawer-search-results" class="hidden min-h-0 px-5 pt-3 pb-2 overflow-y-auto flex-1"></div>
+
+        <div id="major-drawer-browser"
+            class="mt-3 mx-5 flex-1 min-h-0 rounded-[20px] border border-gray-100 overflow-hidden">
+            <div class="grid grid-cols-3 h-full">
+                <div class="flex min-h-0 flex-col border-r border-gray-100 bg-gray-50/80">
+                    <div id="major-discipline-title" class="shrink-0 px-3 py-3 text-[12px] font-semibold text-gray-500">
+                        门类</div>
+                    <div id="major-discipline-list" class="flex-1 overflow-y-auto"></div>
+                </div>
+                <div class="flex min-h-0 flex-col border-r border-gray-100 bg-white">
+                    <div id="major-category-title" class="shrink-0 px-3 py-3 text-[12px] font-semibold text-gray-500">
+                        专业类</div>
+                    <div id="major-category-list" class="flex-1 overflow-y-auto"></div>
+                </div>
+                <div class="flex min-h-0 flex-col bg-white">
+                    <div id="major-option-title" class="shrink-0 px-3 py-3 text-[12px] font-semibold text-gray-500">专业
+                    </div>
+                    <div id="major-option-list" class="flex-1 overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-5 pt-4 shrink-0">
+            <button id="major-confirm-btn" onclick="confirmMajorSelection()"
+                class="w-full bg-brand-500 text-white font-bold text-[16px] py-[14px] rounded-full shadow-[0_8px_20px_-6px_rgba(255,106,44,0.5)] active:scale-[0.98] transition-all flex justify-center items-center">
+                确认选择
+            </button>
+        </div>
+    </div>
+
+    <!-- 5. 地区选择抽屉 -->
+    <div id="region-drawer"
+        class="fixed bottom-0 left-0 right-0 bg-white rounded-t-[24px] z-[110] transform translate-y-full transition-transform duration-300 pb-6 flex flex-col h-[75vh] max-h-[85vh]">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+            <div class="flex flex-col">
+                <span id="region-drawer-title" class="text-[16px] font-bold text-gray-800">添加地区</span>
+                <span id="region-drawer-summary" class="mt-0.5 text-[12px] text-gray-500">已选地区将优先推荐</span>
+            </div>
+            <button onclick="closeAllDrawers()"
+                class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="px-5 pt-4 shrink-0">
+            <div class="rounded-[16px] border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass text-[12px] text-gray-300"></i>
+                    <input id="region-drawer-search-input" type="text" oninput="updateRegionDrawerSearch(this.value)"
+                        class="flex-1 bg-transparent text-[13px] text-gray-800 outline-none placeholder:text-gray-300"
+                        placeholder="搜索并选择地区，如北京、江苏">
+                    <button id="region-drawer-search-clear" type="button" onclick="clearRegionDrawerSearch()"
+                        class="hidden h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-gray-400 active:bg-gray-100">
+                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-5 pt-3 shrink-0">
+            <div class="flex items-center justify-between gap-3 px-1 border-b border-gray-50 pb-2">
+                <p id="region-drawer-selected-meta" class="text-[11px] text-gray-500 font-semibold">已选 0 个地区</p>
+                <button type="button" onclick="regionState.draftSelectedRegionIds = []; renderRegionDrawer();"
+                    class="text-[11px] font-semibold text-gray-400">
+                    清空选择
+                </button>
+            </div>
+        </div>
+
+        <div id="region-drawer-list" class="min-h-0 flex-1 overflow-y-auto px-5 pt-2 pb-2"></div>
+
+        <div class="px-5 pt-3 shrink-0 border-t border-gray-50">
+            <button id="region-confirm-btn" onclick="confirmRegionSelection()"
+                class="w-full bg-brand-500 text-white font-bold text-[16px] py-[14px] rounded-full shadow-[0_8px_20px_-6px_rgba(255,106,44,0.5)] active:scale-[0.98] transition-all flex justify-center items-center">
+                保存当前选择
+            </button>
+        </div>
+    </div>
+    <!-- ======== 全局弹窗区域结束 ======== -->
+
+    <!-- 简易 JS 用于 Tab 切换和 Toggle 动效 -->
+    <script>
+        const tabs = ['college', 'major', 'region', 'more'];
+
+
+        // 全局 Toast 提示
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'toast-item';
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 2600);
+        }
+
+        function switchTab(activeTab) {
+            tabs.forEach(tab => {
+                // 内容区显隐
+                document.getElementById(`content-${tab}`).classList.add('hidden');
+
+                // Tab 文字颜色和字重
+                const textEl = document.getElementById(`tab-text-${tab}`);
+                textEl.className = 'text-[16px] transition-colors tab-text';
+                textEl.classList.add(tab === activeTab ? 'font-bold' : 'font-normal');
+                textEl.classList.add(tab === activeTab ? 'text-gray-900' : 'text-gray-500');
+
+                // Tab 下划线状态
+                const lineEl = document.getElementById(`tab-line-${tab}`);
+                lineEl.className = 'h-[4px] rounded-full bg-brand-500 transition-all tab-line';
+                lineEl.classList.add(tab === activeTab ? 'w-6' : 'w-0');
+            });
+
+            // 显示当前内容
+            document.getElementById(`content-${activeTab}`).classList.remove('hidden');
+
+            if (activeTab === 'region') {
+                renderRegionExperience();
+            }
+
+            if (activeTab === 'college' && window.__preferenceBootstrapped) {
+                renderCollegePanel();
+            }
+
+            if (activeTab === 'major') {
+                renderMajorPanel();
+            }
+
+        }
+
+        function handleConfirm() {
+            const collegePayload = buildCollegeSubmitPayload();
+            const majorPayload = buildMajorSubmitPayload();
+            const regionPayload = buildRegionSubmitPayload();
+            window.latestPreferenceSubmission = {
+                ...(window.latestPreferenceSubmission || {}),
+                college: collegePayload,
+                region: regionPayload,
+                major: majorPayload
+            };
+            console.log('college submit payload', collegePayload);
+            console.log('major submit payload', majorPayload);
+            console.log('region submit payload', regionPayload);
+
+            // 简单的交互反馈
+            const btnText = document.getElementById('confirm-btn-text');
+            const originalText = btnText.innerText;
+            btnText.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> 提交中...`;
+            setTimeout(() => {
+                btnText.innerHTML = `<i class="fa-solid fa-check"></i> 操作成功`;
+                setTimeout(() => {
+                    btnText.innerText = originalText;
+                }, 2000);
+            }, 800);
+        }
+
+        // 分段控制器 Toggle Demo (为所有按钮添加点击事件)
+        document.querySelectorAll('.flex.bg-gray-100\\/80, .flex.bg-gray-200\\/50').forEach(container => {
+            const btns = container.querySelectorAll('button');
+            btns.forEach((btn, index) => {
+                btn.addEventListener('click', () => {
+                    // 阻止冒泡
+                    event.stopPropagation();
+                    // 如果点击的是第一个按钮（不考虑）
+                    if (index === 0) {
+                        btns[0].className = "w-[60px] py-[6px] text-[13px] font-bold rounded-full text-gray-600 bg-white shadow-sm z-10 transition-all";
+                        btns[1].className = "w-[60px] py-[6px] text-[13px] font-medium rounded-full text-gray-400 z-10 transition-all";
+                        container.className = "flex bg-gray-200/50 p-1 rounded-full relative";
+                    } else {
+                        // 如果点击的是第二个按钮（考虑）
+                        btns[0].className = "w-[60px] py-[6px] text-[13px] font-medium rounded-full text-gray-500 z-10 transition-all";
+                        btns[1].className = "w-[60px] py-[6px] text-[13px] font-bold rounded-full text-brand-500 bg-white shadow-sm z-10 transition-all";
+                        container.className = "flex bg-gray-100/80 p-1 rounded-full relative";
+                    }
+                });
+            });
+        });
+
+        // 初始选中第一个 Tab
+        switchTab('college');
+
+        // =================基本信息模块逻辑==================
+        // 1. 本科专科切换联动
+        function switchGradeType(type) {
+            const btnZhuan = document.getElementById('btn-zhuanke');
+            const btnBen = document.getElementById('btn-benke');
+            const wrapZhuan = document.getElementById('wrapper-zhuanke');
+            const wrapBen = document.getElementById('wrapper-benke');
+
+            if (type === 'ben') {
+                btnBen.className = "w-1/2 py-[6px] text-[13px] font-bold rounded-full text-brand-500 bg-white shadow-sm z-10 transition-all";
+                btnZhuan.className = "w-1/2 py-[6px] text-[13px] font-medium rounded-full text-gray-500 z-10 transition-all";
+                wrapBen.classList.remove('hidden');
+                wrapZhuan.classList.add('hidden');
+            } else {
+                btnZhuan.className = "w-1/2 py-[6px] text-[13px] font-bold rounded-full text-brand-500 bg-white shadow-sm z-10 transition-all";
+                btnBen.className = "w-1/2 py-[6px] text-[13px] font-medium rounded-full text-gray-500 z-10 transition-all";
+                wrapZhuan.classList.remove('hidden');
+                wrapBen.classList.add('hidden');
+            }
+
+            syncCollegeSelectionWithCurrentType();
+            renderCollegePanel();
+            renderCollegeDrawer();
+            syncMajorSelectionWithCurrentType();
+            renderMajorPanel();
+            renderMajorDrawer();
+        }
+
+        // 2. 只读报考信息同步
+        function syncReadonlyExamContext() {
+            const provinceText = REGION_SELECTION_CONFIG.currentProvinceName
+                || document.getElementById('display-province')?.innerText?.trim()
+                || REGION_SELECTION_CONFIG.fallbackProvinceName;
+            const yearText = REGION_SELECTION_CONFIG.currentYearText
+                || document.getElementById('display-year')?.innerText?.trim()
+                || REGION_SELECTION_CONFIG.fallbackYearText;
+
+            const provinceEl = document.getElementById('display-province');
+            const yearEl = document.getElementById('display-year');
+
+            if (provinceEl) provinceEl.innerText = provinceText;
+            if (yearEl) yearEl.innerText = yearText;
+
+            REGION_SELECTION_CONFIG.currentProvinceName = provinceText;
+            REGION_SELECTION_CONFIG.currentYearText = yearText;
+        }
+
+        // 3. 抽屉开启机制
+        function openDrawer(drawerId) {
+            const overlay = document.getElementById('global-overlay');
+            const drawer = document.getElementById(drawerId);
+
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100', 'pointer-events-auto');
+
+            drawer.classList.remove('translate-y-full');
+            drawer.classList.add('translate-y-0');
+        }
+
+        function closeAllDrawers() {
+            const overlay = document.getElementById('global-overlay');
+            overlay.classList.remove('opacity-100', 'pointer-events-auto');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+
+            document.querySelectorAll('[id$="-drawer"]').forEach(drawer => {
+                drawer.classList.remove('translate-y-0');
+                drawer.classList.add('translate-y-full');
+            });
+        }
+
+        // 5. 选科核心逻辑 (限选 3)
+        let selectedSubjects = [];
+        function toggleSubject(element) {
+            const val = element.getAttribute('data-val');
+            const idx = selectedSubjects.indexOf(val);
+
+            if (idx > -1) {
+                // 取消选中
+                selectedSubjects.splice(idx, 1);
+                element.className = "subj-btn relative py-3 rounded-xl border-2 border-transparent bg-gray-50 text-gray-700 font-medium text-[15px] transition-all";
+            } else {
+                // 判断是否超过 3 项上限
+                if (selectedSubjects.length >= 3) {
+                    // 可以加一个简单的动效震动反馈，这里先简单 return 阻断
+                    element.classList.add('animate-pulse');
+                    setTimeout(() => element.classList.remove('animate-pulse'), 300);
+                    return;
+                }
+                // 选中
+                selectedSubjects.push(val);
+                element.className = "subj-btn relative py-3 rounded-xl border-2 border-brand-500 bg-brand-50 text-brand-500 font-bold text-[15px] shadow-[0_4px_12px_rgba(255,106,44,0.15)] transition-all";
+            }
+
+            // 更新 UI 和确定按钮验证状态
+            document.getElementById('subject-count').innerText = selectedSubjects.length;
+            const confirmBtn = document.getElementById('subject-confirm-btn');
+
+            if (selectedSubjects.length === 3) {
+                confirmBtn.disabled = false;
+                confirmBtn.className = "w-full bg-brand-500 text-white font-bold text-[16px] py-[14px] rounded-full shadow-[0_8px_20px_-6px_rgba(255,106,44,0.5)] active:scale-[0.98] transition-all flex justify-center items-center";
+            } else {
+                confirmBtn.disabled = true;
+                confirmBtn.className = "w-full bg-gray-300 text-white font-bold text-[16px] py-[14px] rounded-full transition-colors flex justify-center items-center";
+            }
+        }
+
+        function confirmSubjects() {
+            if (selectedSubjects.length !== 3) return;
+            const displayStr = selectedSubjects.join(', ');
+            const displayEl = document.getElementById('display-subject');
+            displayEl.innerText = displayStr;
+            displayEl.classList.remove('text-brand-500');
+            displayEl.classList.add('text-gray-900');
+            closeAllDrawers();
+        }
+
+        const collegeLevelMeta = {
+            reach: {
+                shortLabel: '冲',
+                label: '冲一冲',
+                activeClass: 'bg-[#FFE6D8] text-[#E06A2A]'
+            },
+            steady: {
+                shortLabel: '稳',
+                label: '稳一稳',
+                activeClass: 'bg-[#E7F0FF] text-[#3F78E0]'
+            },
+            safe: {
+                shortLabel: '保',
+                label: '保一保',
+                activeClass: 'bg-[#E4F7ED] text-[#2F9B61]'
+            }
+        };
+
+        const collegeCatalog = [
+            { id: 'pku', name: '北京大学', regionId: 'beijing', regionName: '北京', typeKey: 'undergraduate', nature: 'public', natureLabel: '公办', category: '综合', featured: true, badges: ['C9', '985', '211', '双一流'], aliases: ['北大'] },
+            { id: 'buaa', name: '北京航空航天大学', regionId: 'beijing', regionName: '北京', typeKey: 'undergraduate', nature: 'public', natureLabel: '公办', category: '理工', featured: true, badges: ['985', '211', '双一流', '国防七子'], aliases: ['北航'] },
+            { id: 'nju', name: '南京大学', regionId: 'jiangsu', regionName: '江苏', typeKey: 'undergraduate', nature: 'public', natureLabel: '公办', category: '综合', featured: true, badges: ['C9', '985', '211', '双一流'] },
+            { id: 'zju', name: '浙江大学', regionId: 'zhejiang', regionName: '浙江', typeKey: 'undergraduate', nature: 'public', natureLabel: '公办', category: '综合', featured: true, badges: ['C9', '985', '211', '双一流'] },
+            { id: 'scu', name: '四川大学', regionId: 'sichuan', regionName: '四川', typeKey: 'undergraduate', nature: 'public', natureLabel: '公办', category: '综合', featured: true, badges: ['985', '211', '双一流'] },
+            { id: 'szu', name: '深圳大学', regionId: 'guangdong', regionName: '广东', typeKey: 'undergraduate', nature: 'public', natureLabel: '公办', category: '综合', featured: false, badges: ['省重点'] },
+            { id: 'trade-shanghai', name: '上海对外经贸大学', regionId: 'shanghai', regionName: '上海', typeKey: 'undergraduate', nature: 'public', natureLabel: '公办', category: '财经', featured: false, badges: ['省重点'] },
+            { id: 'scnu', name: '华南师范大学', regionId: 'guangdong', regionName: '广东', typeKey: 'undergraduate', nature: 'public', natureLabel: '公办', category: '师范', featured: true, badges: ['211', '双一流'] },
+            { id: 'nottingham-ningbo', name: '宁波诺丁汉大学', regionId: 'zhejiang', regionName: '浙江', typeKey: 'undergraduate', nature: 'cooperation', natureLabel: '中外合作', category: '综合', featured: false, badges: ['合作办学', '国际化'] },
+            { id: 'xjtlu', name: '西交利物浦大学', regionId: 'jiangsu', regionName: '江苏', typeKey: 'undergraduate', nature: 'cooperation', natureLabel: '中外合作', category: '综合', featured: false, badges: ['合作办学', '国际化'] },
+            { id: 'wenzhou-kean', name: '温州肯恩大学', regionId: 'zhejiang', regionName: '浙江', typeKey: 'undergraduate', nature: 'cooperation', natureLabel: '中外合作', category: '综合', featured: false, badges: ['合作办学', '国际化'] },
+            { id: 'wuchang-shouyi', name: '武昌首义学院', regionId: 'hubei', regionName: '湖北', typeKey: 'undergraduate', nature: 'private', natureLabel: '民办', category: '理工', featured: false, badges: ['民办'] },
+            { id: 'guangzhou-nanfang', name: '广州南方学院', regionId: 'guangdong', regionName: '广东', typeKey: 'undergraduate', nature: 'private', natureLabel: '民办', category: '综合', featured: false, badges: ['民办'] },
+            { id: 'jisu-foreign', name: '吉林外国语大学', regionId: 'jilin', regionName: '吉林', typeKey: 'undergraduate', nature: 'private', natureLabel: '民办', category: '语言', featured: false, badges: ['民办'] },
+            { id: 'bjdc', name: '北京电子科技职业学院', regionId: 'beijing', regionName: '北京', typeKey: 'juniorCollege', nature: 'public', natureLabel: '公办', category: '理工', featured: true, badges: ['双高'] },
+            { id: 'szpt', name: '深圳职业技术学院', regionId: 'guangdong', regionName: '广东', typeKey: 'juniorCollege', nature: 'public', natureLabel: '公办', category: '综合', featured: true, badges: ['双高', '示范校'] },
+            { id: 'njcit', name: '南京信息职业技术学院', regionId: 'jiangsu', regionName: '江苏', typeKey: 'juniorCollege', nature: 'public', natureLabel: '公办', category: '理工', featured: true, badges: ['双高'] },
+            { id: 'sdvcst', name: '山东商业职业技术学院', regionId: 'shandong', regionName: '山东', typeKey: 'juniorCollege', nature: 'public', natureLabel: '公办', category: '财经', featured: true, badges: ['双高'] },
+            { id: 'whpt', name: '武汉职业技术学院', regionId: 'hubei', regionName: '湖北', typeKey: 'juniorCollege', nature: 'public', natureLabel: '公办', category: '综合', featured: true, badges: ['双高'] },
+            { id: 'csmz', name: '长沙民政职业技术学院', regionId: 'hunan', regionName: '湖南', typeKey: 'juniorCollege', nature: 'public', natureLabel: '公办', category: '综合', featured: true, badges: ['双高'] },
+            { id: 'hnjm', name: '海南经贸职业技术学院', regionId: 'hainan', regionName: '海南', typeKey: 'juniorCollege', nature: 'public', natureLabel: '公办', category: '财经', featured: false, badges: ['财经类'] },
+            { id: 'gdlg', name: '广东岭南职业技术学院', regionId: 'guangdong', regionName: '广东', typeKey: 'juniorCollege', nature: 'private', natureLabel: '民办', category: '综合', featured: false, badges: ['民办'] },
+            { id: 'gz-city', name: '广州城建职业学院', regionId: 'guangdong', regionName: '广东', typeKey: 'juniorCollege', nature: 'private', natureLabel: '民办', category: '理工', featured: false, badges: ['民办'] },
+            { id: 'tj-auto', name: '天津滨海汽车工程职业学院', regionId: 'tianjin', regionName: '天津', typeKey: 'juniorCollege', nature: 'private', natureLabel: '民办', category: '理工', featured: false, badges: ['民办'] },
+            { id: 'sccvc', name: '苏州百年职业学院', regionId: 'jiangsu', regionName: '江苏', typeKey: 'juniorCollege', nature: 'cooperation', natureLabel: '中外合作', category: '综合', featured: false, badges: ['合作办学', '国际化'] }
+        ];
+
+        const collegeOptionMap = {};
+        const collegeState = {
+            selectedCollegeIds: [],
+            sortedSelectedCollegeIds: [],
+            selectedCollegeConfigs: {},
+            draftSelectedCollegeIds: [],
+            activeFilterSelections: {
+                category: [],
+                feature: [],
+                nature: [],
+                level: []
+            },
+            draftFilterSelections: {
+                category: [],
+                feature: [],
+                nature: [],
+                level: []
+            },
+            searchQuery: '',
+            hasAppliedFilters: false,
+            isBulkEditMode: false,
+            bulkSelectedCollegeIds: []
+        };
+
+        collegeCatalog.forEach(college => {
+            const typeLabel = college.typeKey === 'juniorCollege' ? '专科' : '本科';
+            collegeOptionMap[college.id] = {
+                ...college,
+                typeLabel,
+                searchText: [
+                    college.name,
+                    college.regionName,
+                    typeLabel,
+                    college.natureLabel,
+                    college.category || '',
+                    ...(college.badges || []),
+                    ...(college.aliases || [])
+                ].join('|').toLowerCase()
+            };
+        });
+
+        function getCollegeLevelConfig(levelKey) {
+            return collegeLevelMeta[levelKey] || collegeLevelMeta.steady;
+        }
+
+        function normalizeCollegeIds(collegeIds) {
+            const seenIds = new Set();
+            return (collegeIds || []).filter(collegeId => {
+                if (!collegeOptionMap[collegeId] || seenIds.has(collegeId)) {
+                    return false;
+                }
+                seenIds.add(collegeId);
+                return true;
+            });
+        }
+
+        function getCurrentPreferredCollegeType() {
+            return document.getElementById('wrapper-zhuanke')?.classList.contains('hidden')
+                ? 'undergraduate'
+                : 'juniorCollege';
+        }
+
+        function filterCollegeIdsByType(collegeIds, typeKey = getCurrentPreferredCollegeType()) {
+            return normalizeCollegeIds(collegeIds).filter(collegeId => collegeOptionMap[collegeId]?.typeKey === typeKey);
+        }
+
+        function syncCollegeSortedIds(nextSelectedIds, previousSortedIds) {
+            const selectedIdSet = new Set(nextSelectedIds);
+            const preservedIds = previousSortedIds.filter(collegeId => selectedIdSet.has(collegeId));
+            const preservedSet = new Set(preservedIds);
+            const appendedIds = nextSelectedIds.filter(collegeId => !preservedSet.has(collegeId));
+            return [...preservedIds, ...appendedIds];
+        }
+
+        function normalizeCollegeConfigMap(selectedCollegeIds, previousConfigs = {}) {
+            const nextConfigs = {};
+            selectedCollegeIds.forEach(collegeId => {
+                nextConfigs[collegeId] = {
+                    level: previousConfigs[collegeId]?.level || 'steady'
+                };
+            });
+            return nextConfigs;
+        }
+
+        function syncCollegeBulkState() {
+            const selectedIdSet = new Set(collegeState.selectedCollegeIds);
+            collegeState.bulkSelectedCollegeIds = collegeState.bulkSelectedCollegeIds.filter(collegeId => selectedIdSet.has(collegeId));
+
+            if (collegeState.selectedCollegeIds.length <= 1) {
+                collegeState.isBulkEditMode = false;
+                collegeState.bulkSelectedCollegeIds = [];
+            }
+        }
+
+        function setSelectedColleges(nextSelectedCollegeIds, options = {}) {
+            const { resetSortOrder = false } = options;
+            const normalizedIds = normalizeCollegeIds(nextSelectedCollegeIds);
+
+            collegeState.selectedCollegeIds = normalizedIds;
+            collegeState.sortedSelectedCollegeIds = resetSortOrder
+                ? normalizedIds.slice()
+                : syncCollegeSortedIds(normalizedIds, collegeState.sortedSelectedCollegeIds);
+            collegeState.selectedCollegeConfigs = normalizeCollegeConfigMap(normalizedIds, collegeState.selectedCollegeConfigs);
+            syncCollegeBulkState();
+            renderCollegePanel();
+        }
+
+        function syncCollegeSelectionWithCurrentType() {
+            const currentTypeKey = getCurrentPreferredCollegeType();
+            collegeState.selectedCollegeIds = filterCollegeIdsByType(collegeState.selectedCollegeIds, currentTypeKey);
+            collegeState.sortedSelectedCollegeIds = filterCollegeIdsByType(collegeState.sortedSelectedCollegeIds, currentTypeKey);
+            collegeState.draftSelectedCollegeIds = filterCollegeIdsByType(collegeState.draftSelectedCollegeIds, currentTypeKey);
+            collegeState.selectedCollegeConfigs = normalizeCollegeConfigMap(collegeState.selectedCollegeIds, collegeState.selectedCollegeConfigs);
+            syncCollegeBulkState();
+        }
+
+        function getCurrentHomeRegionId() {
+            const provinceName = REGION_SELECTION_CONFIG.currentProvinceName
+                || document.getElementById('display-province')?.innerText?.trim()
+                || REGION_SELECTION_CONFIG.fallbackProvinceName;
+            return regionNameToIdMap[provinceName] || null;
+        }
+
+        function normalizeCollegeSearchQuery(query) {
+            return (query || '').trim().toLowerCase().replace(/\s+/g, '');
+        }
+
+        function createEmptyFilterSelections() {
+            return { category: [], feature: [], nature: [], level: [] };
+        }
+
+        function cloneFilterSelections(selections) {
+            const result = {};
+            for (const key of Object.keys(selections)) {
+                result[key] = (selections[key] || []).slice();
+            }
+            return result;
+        }
+
+        function countActiveFilters(selections) {
+            return Object.values(selections).reduce((sum, arr) => sum + (arr || []).length, 0);
+        }
+
+        function getCollegeFilterGroups() {
+            return [
+                {
+                    key: 'category',
+                    title: '院校类型',
+                    multiSelect: true,
+                    items: [
+                        { key: '综合', label: '综合' },
+                        { key: '理工', label: '理工' },
+                        { key: '财经', label: '财经' },
+                        { key: '农林', label: '农林' },
+                        { key: '医药', label: '医药' },
+                        { key: '师范', label: '师范' },
+                        { key: '体育', label: '体育' },
+                        { key: '政法', label: '政法' },
+                        { key: '艺术', label: '艺术' },
+                        { key: '民族', label: '民族' },
+                        { key: '语言', label: '语言' },
+                        { key: '军事', label: '军事' },
+                        { key: '其它', label: '其它' }
+                    ]
+                },
+                {
+                    key: 'feature',
+                    title: '院校特色',
+                    multiSelect: true,
+                    items: [
+                        { key: '985', label: '985' },
+                        { key: '211', label: '211' },
+                        { key: '双一流', label: '双一流' },
+                        { key: '101计划', label: '101计划' },
+                        { key: '研究生院', label: '研究生院' },
+                        { key: '保研', label: '保研' },
+                        { key: '国重点', label: '国重点' },
+                        { key: '省重点', label: '省重点' },
+                        { key: '部委院校', label: '部委院校' },
+                        { key: '省属', label: '省属' },
+                        { key: '省部共建', label: '省部共建' },
+                        { key: 'C9', label: 'C9' },
+                        { key: 'E9', label: 'E9' },
+                        { key: '国防七子', label: '国防七子' },
+                        { key: '兵工七子', label: '兵工七子' },
+                        { key: '五院四系', label: '五院四系' },
+                        { key: '两电一邮', label: '两电一邮' },
+                        { key: '四电四邮', label: '四电四邮' },
+                        { key: '小211', label: '小211' },
+                        { key: '双高', label: '双高' }
+                    ]
+                },
+                {
+                    key: 'nature',
+                    title: '办学类型',
+                    multiSelect: true,
+                    items: [
+                        { key: 'public', label: '公办' },
+                        { key: 'private', label: '民办' },
+                        { key: 'cooperation', label: '中外/港澳' }
+                    ]
+                },
+                {
+                    key: 'level',
+                    title: '办学层次',
+                    multiSelect: true,
+                    items: [
+                        { key: 'undergraduate', label: '本科' },
+                        { key: 'juniorCollege', label: '专科' }
+                    ]
+                }
+            ];
+        }
+
+        function matchesCollegeFilter(college, groupKey, selectedKeys) {
+            if (!selectedKeys || selectedKeys.length === 0) return true;
+
+            switch (groupKey) {
+                case 'category':
+                    return selectedKeys.includes(college.category);
+                case 'feature':
+                    return selectedKeys.some(key => (college.badges || []).includes(key));
+                case 'nature':
+                    return selectedKeys.includes(college.nature);
+                case 'level':
+                    return selectedKeys.includes(college.typeKey);
+                default:
+                    return true;
+            }
+        }
+
+        function applyCollegeFilters(colleges, filterSelections) {
+            return colleges.filter(college => {
+                return Object.entries(filterSelections).every(([groupKey, selectedKeys]) =>
+                    matchesCollegeFilter(college, groupKey, selectedKeys)
+                );
+            });
+        }
+
+        function getActiveFilterLabels(filterSelections) {
+            const labels = [];
+            const groups = getCollegeFilterGroups();
+            for (const group of groups) {
+                const selectedKeys = filterSelections[group.key] || [];
+                for (const key of selectedKeys) {
+                    const item = group.items.find(i => i.key === key);
+                    if (item) labels.push({ groupKey: group.key, key: item.key, label: item.label });
+                }
+            }
+            return labels;
+        }
+
+        function getFilteredCollegeResults() {
+            const normalizedQuery = normalizeCollegeSearchQuery(collegeState.searchQuery);
+            let results = Object.values(collegeOptionMap);
+
+            if (normalizedQuery) {
+                // 搜索时忽略筛选条件，在全量列表中搜索
+                return results.filter(college => college.searchText.replace(/\s+/g, '').includes(normalizedQuery));
+            }
+
+            // 无搜索关键词时，按筛选条件过滤
+            results = applyCollegeFilters(results, collegeState.activeFilterSelections);
+            return results;
+        }
+
+        function getSelectedCollegeLevelSummary() {
+            const counts = { reach: 0, steady: 0, safe: 0 };
+            collegeState.selectedCollegeIds.forEach(collegeId => {
+                const level = collegeState.selectedCollegeConfigs[collegeId]?.level || 'steady';
+                counts[level] += 1;
+            });
+            return `冲 ${counts.reach} · 稳 ${counts.steady} · 保 ${counts.safe}`;
+        }
+
+        function renderCollegePanel() {
+            const emptyStateEl = document.getElementById('college-empty-state');
+            const selectedStateEl = document.getElementById('college-selected-state');
+            const selectedCountEl = document.getElementById('selected-college-count');
+            const listEl = document.getElementById('selected-college-list');
+            const primaryActionEl = document.getElementById('college-primary-action');
+            if (!emptyStateEl || !selectedStateEl || !listEl || !primaryActionEl) return;
+
+            syncCollegeSelectionWithCurrentType();
+
+            const selectedColleges = collegeState.sortedSelectedCollegeIds
+                .map(collegeId => ({ ...(collegeOptionMap[collegeId] || {}), id: collegeId }))
+                .filter(college => Boolean(college.name));
+            const selectedCount = selectedColleges.length;
+
+            emptyStateEl.classList.toggle('hidden', selectedCount > 0);
+            selectedStateEl.classList.toggle('hidden', selectedCount === 0);
+            primaryActionEl.innerText = selectedCount === 0 ? '添加院校' : '继续添加';
+
+            if (selectedCountEl) {
+                selectedCountEl.innerText = selectedCount;
+            }
+
+            listEl.innerHTML = selectedColleges.map((college, index) => {
+                const badges = (college.badges || []).slice(0, 3).map(badge => `
+                    <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">${badge}</span>
+                `).join('');
+
+                return `
+                    <div class="rounded-[16px] border border-white bg-white px-3 py-3 shadow-sm">
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-500">
+                                ${index + 1}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="truncate text-[13px] font-semibold text-gray-800">${college.name}</span>
+                                </div>
+                                <p class="mt-1 text-[11px] text-gray-400">${college.regionName} · ${college.natureLabel} · ${college.typeLabel}</p>
+                                <div class="mt-2 flex flex-wrap gap-1.5">${badges}</div>
+                            </div>
+                            <div class="flex shrink-0 flex-col items-end gap-2">
+                                <button type="button" onclick="removeCollegeSelection('${college.id}')"
+                                    class="flex h-7 w-7 items-center justify-center rounded-full bg-gray-50 text-gray-400 active:bg-gray-100">
+                                    <i class="fa-solid fa-xmark text-[11px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openCollegeDrawer() {
+            collegeState.draftSelectedCollegeIds = collegeState.selectedCollegeIds.slice();
+            collegeState.searchQuery = '';
+            // 确保打开时总是列表视图
+            const listView = document.getElementById('college-list-view');
+            const filterView = document.getElementById('college-filter-view');
+            const titleEl = document.getElementById('college-drawer-title');
+            if (listView) listView.classList.remove('hidden');
+            if (filterView) filterView.classList.add('hidden');
+            if (titleEl) titleEl.innerText = '选择院校';
+            renderCollegeDrawer();
+            openDrawer('college-drawer');
+        }
+
+        function updateCollegeDrawerSearch(query) {
+            collegeState.searchQuery = query || '';
+            renderCollegeDrawer();
+        }
+
+        function clearCollegeDrawerSearch() {
+            collegeState.searchQuery = '';
+            const searchInput = document.getElementById('college-drawer-search-input');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            renderCollegeDrawer();
+        }
+
+        function toggleDraftCollegeSelection(collegeId) {
+            const draftSet = new Set(collegeState.draftSelectedCollegeIds);
+            if (draftSet.has(collegeId)) {
+                draftSet.delete(collegeId);
+            } else {
+                draftSet.add(collegeId);
+            }
+            collegeState.draftSelectedCollegeIds = Array.from(draftSet);
+            renderCollegeDrawer();
+        }
+
+        function clearCollegeDrawerSelection() {
+            collegeState.draftSelectedCollegeIds = [];
+            renderCollegeDrawer();
+        }
+
+        function confirmCollegeSelection() {
+            setSelectedColleges(collegeState.draftSelectedCollegeIds);
+            closeAllDrawers();
+        }
+
+        /* ===== 视图切换：列表 ↔ 筛选 ===== */
+
+        function switchToFilterView() {
+            collegeState.draftFilterSelections = cloneFilterSelections(collegeState.activeFilterSelections);
+            const listView = document.getElementById('college-list-view');
+            const filterView = document.getElementById('college-filter-view');
+            const titleEl = document.getElementById('college-drawer-title');
+            const summaryEl = document.getElementById('college-drawer-summary');
+            if (listView) listView.classList.add('hidden');
+            if (filterView) filterView.classList.remove('hidden');
+            if (titleEl) titleEl.innerText = '筛选条件';
+            if (summaryEl) summaryEl.innerText = '多选后点击「确定」应用';
+            renderCollegeFilterView();
+        }
+
+        function switchToListView() {
+            const listView = document.getElementById('college-list-view');
+            const filterView = document.getElementById('college-filter-view');
+            const titleEl = document.getElementById('college-drawer-title');
+            if (listView) listView.classList.remove('hidden');
+            if (filterView) filterView.classList.add('hidden');
+            if (titleEl) titleEl.innerText = '选择院校';
+            renderCollegeDrawer();
+        }
+
+        function handleCollegeDrawerClose() {
+            const filterView = document.getElementById('college-filter-view');
+            if (filterView && !filterView.classList.contains('hidden')) {
+                switchToListView();
+                return;
+            }
+            closeAllDrawers();
+        }
+
+        function toggleCollegeFilterItem(groupKey, itemKey) {
+            const draft = collegeState.draftFilterSelections;
+            if (!draft[groupKey]) draft[groupKey] = [];
+            const idx = draft[groupKey].indexOf(itemKey);
+            if (idx >= 0) {
+                draft[groupKey].splice(idx, 1);
+            } else {
+                draft[groupKey].push(itemKey);
+            }
+            renderCollegeFilterView();
+        }
+
+        function resetCollegeFilters() {
+            collegeState.draftFilterSelections = createEmptyFilterSelections();
+            renderCollegeFilterView();
+        }
+
+        function confirmCollegeFilters() {
+            collegeState.activeFilterSelections = cloneFilterSelections(collegeState.draftFilterSelections);
+            collegeState.hasAppliedFilters = countActiveFilters(collegeState.activeFilterSelections) > 0;
+            switchToListView();
+        }
+
+        function removeActiveFilter(groupKey, itemKey) {
+            const selections = collegeState.activeFilterSelections;
+            if (selections[groupKey]) {
+                selections[groupKey] = selections[groupKey].filter(k => k !== itemKey);
+            }
+            renderCollegeDrawer();
+        }
+
+        function clearAllActiveFilters() {
+            collegeState.activeFilterSelections = createEmptyFilterSelections();
+            renderCollegeDrawer();
+        }
+
+        function renderCollegeFilterView() {
+            const contentEl = document.getElementById('college-filter-view-content');
+            if (!contentEl) return;
+
+            const draft = collegeState.draftFilterSelections;
+            const groups = getCollegeFilterGroups();
+
+            contentEl.innerHTML = groups.map(group => {
+                const selectedKeys = new Set(draft[group.key] || []);
+                const isNoneSelected = selectedKeys.size === 0;
+
+                return `
+                    <div class="mb-6 last:mb-0">
+                        <p class="mb-3 text-[14px] font-bold text-gray-800">${group.title}<span class="ml-1 text-[12px] font-normal text-gray-400">(多选)</span></p>
+                        <div class="grid grid-cols-4 gap-2">
+                            ${group.items.map(item => {
+                    const isActive = selectedKeys.has(item.key);
+                    return `
+                                    <button type="button" onclick="toggleCollegeFilterItem('${group.key}', '${item.key}')"
+                                        class="rounded-[10px] border py-2.5 text-center text-[13px] transition-all active:scale-[0.97] ${isActive
+                            ? 'border-brand-200 bg-brand-50 text-brand-500 font-bold'
+                            : 'border-gray-100 bg-gray-50 text-gray-500 font-medium'}">
+                                        ${item.label}
+                                    </button>
+                                `;
+                }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderCollegeActiveFilterChips() {
+            const chipsContainerEl = document.getElementById('college-active-filter-chips');
+            const chipsListEl = document.getElementById('college-active-filter-chips-list');
+            if (!chipsContainerEl || !chipsListEl) return;
+
+            const labels = getActiveFilterLabels(collegeState.activeFilterSelections);
+            const filterCount = countActiveFilters(collegeState.activeFilterSelections);
+
+            if (filterCount === 0) {
+                chipsContainerEl.classList.add('hidden');
+                return;
+            }
+
+            chipsContainerEl.classList.remove('hidden');
+            chipsListEl.innerHTML = labels.map(label => `
+                <button type="button" onclick="removeActiveFilter('${label.groupKey}', '${label.key}')"
+                    class="flex items-center gap-1 rounded-full bg-brand-50 border border-brand-100 px-2.5 py-1 text-[11px] font-semibold text-brand-500 active:bg-brand-100 transition-all">
+                    ${label.label}
+                    <i class="fa-solid fa-xmark text-[9px] text-brand-400"></i>
+                </button>
+            `).join('') + `
+                <button type="button" onclick="clearAllActiveFilters()"
+                    class="flex items-center rounded-full px-2 py-1 text-[11px] font-medium text-gray-400 active:text-gray-600 transition-all">
+                    清除全部
+                </button>
+            `;
+        }
+
+        function renderCollegeDrawer() {
+            const searchInputEl = document.getElementById('college-drawer-search-input');
+            const searchClearEl = document.getElementById('college-drawer-search-clear');
+            const summaryEl = document.getElementById('college-drawer-summary');
+            const selectedMetaEl = document.getElementById('college-drawer-selected-meta');
+            const confirmBtn = document.getElementById('college-confirm-btn');
+            const filterBadgeEl = document.getElementById('college-filter-badge');
+            const filteredColleges = getFilteredCollegeResults();
+            const normalizedQuery = normalizeCollegeSearchQuery(collegeState.searchQuery);
+            const filterCount = countActiveFilters(collegeState.activeFilterSelections);
+            const selectedCount = collegeState.draftSelectedCollegeIds.length;
+
+            if (searchInputEl && searchInputEl.value !== collegeState.searchQuery) {
+                searchInputEl.value = collegeState.searchQuery;
+            }
+
+            if (searchClearEl) {
+                searchClearEl.className = `${normalizedQuery ? 'inline-flex ' : 'hidden '}h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-gray-400 active:bg-gray-100`;
+            }
+
+            if (summaryEl) {
+                summaryEl.innerText = filterCount > 0
+                    ? `已设置 ${filterCount} 个筛选条件`
+                    : '点击「筛选」可按特色、类型、层次等条件缩小范围';
+            }
+
+            if (filterBadgeEl) {
+                if (filterCount > 0) {
+                    filterBadgeEl.classList.remove('hidden');
+                    filterBadgeEl.innerText = filterCount;
+                } else {
+                    filterBadgeEl.classList.add('hidden');
+                }
+            }
+
+            if (selectedMetaEl) {
+                selectedMetaEl.innerText = normalizedQuery || filterCount > 0
+                    ? `显示 ${filteredColleges.length} 所院校 · 已暂选 ${selectedCount} 所`
+                    : selectedCount === 0
+                        ? '暂无已选院校，点击筛选或搜索后勾选'
+                        : `已暂选 ${selectedCount} 所院校`;
+            }
+
+            if (confirmBtn) {
+                confirmBtn.innerText = selectedCount > 0 ? `确认选择（${selectedCount}）` : '保存当前选择';
+            }
+
+            renderCollegeActiveFilterChips();
+            renderCollegeDrawerList();
+        }
+
+        function renderCollegeDrawerList() {
+            const listEl = document.getElementById('college-drawer-list');
+            if (!listEl) return;
+
+            const normalizedQuery = normalizeCollegeSearchQuery(collegeState.searchQuery);
+            const filterCount = countActiveFilters(collegeState.activeFilterSelections);
+
+            // 无筛选 + 无搜索 + 从未确认过筛选 → 引导空状态
+            if (!normalizedQuery && filterCount === 0 && !collegeState.hasAppliedFilters) {
+                listEl.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 text-center">
+                        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-50 text-gray-300">
+                            <i class="fa-solid fa-magnifying-glass text-[20px]"></i>
+                        </div>
+                        <p class="text-[14px] font-medium text-gray-500">搜索院校名称</p>
+                        <p class="mt-1 text-[12px] text-gray-400">或点击上方「筛选」缩小范围</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const results = getFilteredCollegeResults();
+            const selectedIdSet = new Set(collegeState.draftSelectedCollegeIds);
+
+            if (results.length === 0) {
+                listEl.innerHTML = `
+                    <div class="rounded-[18px] border border-dashed border-gray-200 bg-gray-50/60 px-4 py-8 text-center">
+                        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-300">
+                            <i class="fa-solid fa-building-columns text-[16px]"></i>
+                        </div>
+                        <p class="text-[13px] font-medium text-gray-500">没有找到匹配院校</p>
+                        <p class="mt-1 text-[11px] text-gray-400">${filterCount > 0
+                        ? '可调整筛选条件，或直接搜索院校名称'
+                        : '请换个关键词试试'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = results.map(college => {
+                const isSelected = selectedIdSet.has(college.id);
+                const badges = (college.badges || []).slice(0, 3).map(badge => `
+                    <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">${badge}</span>
+                `).join('');
+
+                return `
+                    <button type="button"
+                        onclick="toggleDraftCollegeSelection('${college.id}')"
+                        class="mb-2 flex w-full items-start gap-3 rounded-[16px] border px-3 py-3 text-left transition-all last:mb-0 ${isSelected
+                        ? 'border-brand-100 bg-brand-50/70'
+                        : 'border-gray-100 bg-white active:bg-gray-50'}">
+                        <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border transition-all ${isSelected
+                        ? 'border-brand-500 bg-brand-500 text-white shadow-sm'
+                        : 'border-gray-200 bg-white text-transparent'}">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="truncate text-[14px] ${isSelected ? 'font-bold text-gray-900' : 'font-medium text-gray-800'}">${college.name}</span>
+                                <span class="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-500">${college.natureLabel}</span>
+                            </div>
+                            <p class="mt-1 text-[11px] text-gray-400">${college.regionName} · ${college.typeLabel}</p>
+                            <div class="mt-2 flex flex-wrap gap-1.5">${badges}</div>
+                        </div>
+                        <span class="text-[11px] font-semibold ${isSelected ? 'text-brand-500' : 'text-gray-300'}">${isSelected ? '已选' : '添加'}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function removeCollegeSelection(collegeId) {
+            setSelectedColleges(collegeState.selectedCollegeIds.filter(id => id !== collegeId));
+        }
+
+        function clearAllCollegeSelection() {
+            setSelectedColleges([]);
+        }
+
+        function toggleCollegeBulkEditMode() {
+            if (collegeState.selectedCollegeIds.length <= 1 && !collegeState.isBulkEditMode) return;
+            collegeState.isBulkEditMode = !collegeState.isBulkEditMode;
+            collegeState.bulkSelectedCollegeIds = [];
+            renderCollegePanel();
+        }
+
+        function toggleCollegeBulkSelection(collegeId) {
+            if (!collegeState.isBulkEditMode) return;
+
+            const selectedSet = new Set(collegeState.bulkSelectedCollegeIds);
+            if (selectedSet.has(collegeId)) {
+                selectedSet.delete(collegeId);
+            } else {
+                selectedSet.add(collegeId);
+            }
+
+            collegeState.bulkSelectedCollegeIds = collegeState.selectedCollegeIds.filter(id => selectedSet.has(id));
+            renderCollegePanel();
+        }
+
+        function toggleSelectAllCollegeBulk() {
+            if (!collegeState.isBulkEditMode) return;
+            collegeState.bulkSelectedCollegeIds = collegeState.bulkSelectedCollegeIds.length === collegeState.selectedCollegeIds.length
+                ? []
+                : collegeState.selectedCollegeIds.slice();
+            renderCollegePanel();
+        }
+
+        function removeBulkSelectedColleges() {
+            if (!collegeState.isBulkEditMode || collegeState.bulkSelectedCollegeIds.length === 0) return;
+            const selectedSet = new Set(collegeState.bulkSelectedCollegeIds);
+            setSelectedColleges(collegeState.selectedCollegeIds.filter(id => !selectedSet.has(id)));
+        }
+
+        function moveCollegeToIndex(collegeId, nextIndex) {
+            const currentIds = collegeState.sortedSelectedCollegeIds.slice();
+            const currentIndex = currentIds.indexOf(collegeId);
+            if (currentIndex === -1) return;
+
+            const boundedIndex = Math.max(0, Math.min(nextIndex, currentIds.length - 1));
+            if (boundedIndex === currentIndex) return;
+
+            currentIds.splice(currentIndex, 1);
+            currentIds.splice(boundedIndex, 0, collegeId);
+            collegeState.sortedSelectedCollegeIds = currentIds;
+            renderCollegePanel();
+        }
+
+        function buildCollegeSubmitPayload() {
+            const selectedColleges = collegeState.sortedSelectedCollegeIds
+                .map((collegeId, index) => {
+                    const college = collegeOptionMap[collegeId];
+                    if (!college) return null;
+
+                    const level = collegeState.selectedCollegeConfigs[collegeId]?.level || 'steady';
+                    return {
+                        id: college.id,
+                        name: college.name,
+                        regionId: college.regionId,
+                        regionName: college.regionName,
+                        typeKey: college.typeKey,
+                        typeLabel: college.typeLabel,
+                        nature: college.nature,
+                        natureLabel: college.natureLabel,
+                        badges: (college.badges || []).slice(),
+                        preferenceLevel: level,
+                        preferenceLevelLabel: getCollegeLevelConfig(level).label,
+                        sortOrder: index + 1
+                    };
+                })
+                .filter(Boolean);
+
+            return {
+                selectedCollegeIds: collegeState.sortedSelectedCollegeIds.slice(),
+                selectedColleges,
+                selectionMode: selectedColleges.length === 0 ? 'none' : selectedColleges.length === 1 ? 'single' : 'multiple',
+                currentTypeKey: getCurrentPreferredCollegeType()
+            };
+        }
+
+        const majorCatalog = {
+            undergraduate: {
+                label: '本科',
+                disciplines: [
+                    {
+                        id: 'ug-philosophy',
+                        name: '哲学',
+                        categories: [
+                            {
+                                id: 'ug-philosophy-category',
+                                name: '哲学类',
+                                majors: [
+                                    { id: 'ug-philosophy', name: '哲学' },
+                                    { id: 'ug-logic', name: '逻辑学' },
+                                    { id: 'ug-religion', name: '宗教学' },
+                                    { id: 'ug-ethics', name: '伦理学' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'ug-economics',
+                        name: '经济学',
+                        categories: [
+                            {
+                                id: 'ug-economics-category',
+                                name: '经济学类',
+                                majors: [
+                                    { id: 'ug-economics-major', name: '经济学' },
+                                    { id: 'ug-public-finance', name: '财政学' },
+                                    { id: 'ug-finance', name: '金融学' },
+                                    { id: 'ug-ibtrade', name: '国际经济与贸易', aliases: ['国贸'] }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'ug-literature',
+                        name: '文学',
+                        categories: [
+                            {
+                                id: 'ug-chinese-category',
+                                name: '中国语言文学类',
+                                majors: [
+                                    { id: 'ug-chinese-language', name: '汉语言文学' },
+                                    { id: 'ug-chinese-international', name: '汉语国际教育' }
+                                ]
+                            },
+                            {
+                                id: 'ug-foreign-category',
+                                name: '外国语言文学类',
+                                majors: [
+                                    { id: 'ug-english', name: '英语' },
+                                    { id: 'ug-business-english', name: '商务英语' }
+                                ]
+                            },
+                            {
+                                id: 'ug-media-category',
+                                name: '新闻传播学类',
+                                majors: [
+                                    { id: 'ug-journalism', name: '新闻学' },
+                                    { id: 'ug-new-media', name: '网络与新媒体', aliases: ['新媒体'] }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'ug-engineering',
+                        name: '工学',
+                        categories: [
+                            {
+                                id: 'ug-computer-category',
+                                name: '计算机类',
+                                majors: [
+                                    { id: 'ug-cs', name: '计算机科学与技术', aliases: ['计算机'] },
+                                    { id: 'ug-software', name: '软件工程', aliases: ['软件'] },
+                                    { id: 'ug-ai', name: '人工智能', aliases: ['AI'] }
+                                ]
+                            },
+                            {
+                                id: 'ug-electronic-category',
+                                name: '电子信息类',
+                                majors: [
+                                    { id: 'ug-telecom', name: '通信工程' },
+                                    { id: 'ug-ee', name: '电子信息工程' }
+                                ]
+                            },
+                            {
+                                id: 'ug-machinery-category',
+                                name: '机械类',
+                                majors: [
+                                    { id: 'ug-mechanical-auto', name: '机械设计制造及其自动化', aliases: ['机械自动化'] },
+                                    { id: 'ug-vehicle', name: '车辆工程' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'ug-medicine',
+                        name: '医学',
+                        categories: [
+                            {
+                                id: 'ug-clinical-category',
+                                name: '临床医学类',
+                                majors: [
+                                    { id: 'ug-clinical', name: '临床医学' },
+                                    { id: 'ug-anesthesia', name: '麻醉学' }
+                                ]
+                            },
+                            {
+                                id: 'ug-nursing-category',
+                                name: '护理学类',
+                                majors: [
+                                    { id: 'ug-nursing', name: '护理学' },
+                                    { id: 'ug-midwifery', name: '助产学' }
+                                ]
+                            },
+                            {
+                                id: 'ug-pharmacy-category',
+                                name: '药学类',
+                                majors: [
+                                    { id: 'ug-pharmacy', name: '药学' },
+                                    { id: 'ug-clinical-pharmacy', name: '临床药学' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'ug-management',
+                        name: '管理学',
+                        categories: [
+                            {
+                                id: 'ug-business-category',
+                                name: '工商管理类',
+                                majors: [
+                                    { id: 'ug-business', name: '工商管理' },
+                                    { id: 'ug-accounting', name: '会计学' },
+                                    { id: 'ug-financial-management', name: '财务管理' }
+                                ]
+                            },
+                            {
+                                id: 'ug-tourism-category',
+                                name: '旅游管理类',
+                                majors: [
+                                    { id: 'ug-tourism', name: '旅游管理' },
+                                    { id: 'ug-hotel', name: '酒店管理' }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            juniorCollege: {
+                label: '专科',
+                disciplines: [
+                    {
+                        id: 'jc-electronics',
+                        name: '电子与信息大类',
+                        categories: [
+                            {
+                                id: 'jc-computer-category',
+                                name: '计算机类',
+                                majors: [
+                                    { id: 'jc-computer-application', name: '计算机应用技术' },
+                                    { id: 'jc-software-tech', name: '软件技术' },
+                                    { id: 'jc-bigdata-tech', name: '大数据技术' }
+                                ]
+                            },
+                            {
+                                id: 'jc-electronic-info-category',
+                                name: '电子信息类',
+                                majors: [
+                                    { id: 'jc-electronic-tech', name: '应用电子技术' },
+                                    { id: 'jc-iot-tech', name: '物联网应用技术' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'jc-finance',
+                        name: '财经商贸大类',
+                        categories: [
+                            {
+                                id: 'jc-accounting-category',
+                                name: '财务会计类',
+                                majors: [
+                                    { id: 'jc-accounting', name: '大数据与会计' },
+                                    { id: 'jc-finance-management', name: '大数据与财务管理' }
+                                ]
+                            },
+                            {
+                                id: 'jc-ecommerce-category',
+                                name: '电子商务类',
+                                majors: [
+                                    { id: 'jc-ecommerce', name: '电子商务' },
+                                    { id: 'jc-crossborder', name: '跨境电子商务' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'jc-medical',
+                        name: '医药卫生大类',
+                        categories: [
+                            {
+                                id: 'jc-nursing-category',
+                                name: '护理类',
+                                majors: [
+                                    { id: 'jc-nursing', name: '护理' },
+                                    { id: 'jc-midwifery', name: '助产' }
+                                ]
+                            },
+                            {
+                                id: 'jc-pharmacy-category',
+                                name: '药学类',
+                                majors: [
+                                    { id: 'jc-pharmacy', name: '药学' },
+                                    { id: 'jc-tcm-pharmacy', name: '中药学' }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            appliedUndergraduate: {
+                label: '高职本科',
+                disciplines: [
+                    {
+                        id: 'ab-electronics',
+                        name: '电子信息类',
+                        categories: [
+                            {
+                                id: 'ab-computer-category',
+                                name: '计算机类',
+                                majors: [
+                                    { id: 'ab-software', name: '软件工程技术' },
+                                    { id: 'ab-bigdata', name: '大数据工程技术' },
+                                    { id: 'ab-ai', name: '人工智能工程技术' }
+                                ]
+                            },
+                            {
+                                id: 'ab-electronic-category',
+                                name: '电子信息类',
+                                majors: [
+                                    { id: 'ab-chip', name: '集成电路工程技术' },
+                                    { id: 'ab-telecom', name: '通信工程技术' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'ab-nursing',
+                        name: '护理类',
+                        categories: [
+                            {
+                                id: 'ab-nursing-category',
+                                name: '护理类',
+                                majors: [
+                                    { id: 'ab-nursing-major', name: '护理' },
+                                    { id: 'ab-midwifery-major', name: '助产' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        id: 'ab-machinery',
+                        name: '机械设计制造类',
+                        categories: [
+                            {
+                                id: 'ab-machinery-category',
+                                name: '机械类',
+                                majors: [
+                                    { id: 'ab-mechanical-auto', name: '机械设计制造及自动化' },
+                                    { id: 'ab-smart-manufacture', name: '智能制造工程技术' }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        };
+
+        const majorTypeOrder = ['undergraduate', 'juniorCollege'];
+        const majorOptionMap = {};
+        const majorFlatOptionsByType = {};
+        const majorState = {
+            selectedMajorIds: [],
+            draftSelectedMajorIds: [],
+            activeTypeKey: 'undergraduate',
+            activeDisciplineIndex: 0,
+            activeCategoryIndex: 0,
+            searchQuery: '',
+            isBulkEditMode: false,
+            bulkSelectedMajorIds: []
+        };
+
+        majorTypeOrder.forEach(typeKey => {
+            const typeConfig = majorCatalog[typeKey];
+            majorFlatOptionsByType[typeKey] = [];
+
+            typeConfig.disciplines.forEach((discipline, disciplineIndex) => {
+                discipline.categories.forEach((category, categoryIndex) => {
+                    category.majors.forEach((major, majorIndex) => {
+                        const meta = {
+                            ...major,
+                            typeKey,
+                            typeLabel: typeConfig.label,
+                            disciplineId: discipline.id,
+                            disciplineName: discipline.name,
+                            categoryId: category.id,
+                            categoryName: category.name,
+                            disciplineIndex,
+                            categoryIndex,
+                            majorIndex,
+                            searchText: [
+                                typeConfig.label,
+                                discipline.name,
+                                category.name,
+                                major.name,
+                                ...(major.aliases || [])
+                            ].join('|').toLowerCase()
+                        };
+
+                        majorOptionMap[major.id] = meta;
+                        majorFlatOptionsByType[typeKey].push(meta);
+                    });
+                });
+            });
+        });
+
+        function normalizeMajorIds(majorIds) {
+            const seenIds = new Set();
+            return (majorIds || []).filter(majorId => {
+                if (!majorOptionMap[majorId] || seenIds.has(majorId)) {
+                    return false;
+                }
+                seenIds.add(majorId);
+                return true;
+            });
+        }
+
+        function getCurrentPreferredMajorType() {
+            return document.getElementById('wrapper-zhuanke')?.classList.contains('hidden')
+                ? 'undergraduate'
+                : 'juniorCollege';
+        }
+
+        function getActiveMajorTypeConfig() {
+            return majorCatalog[majorState.activeTypeKey] || majorCatalog.undergraduate;
+        }
+
+        function syncMajorBrowserIndexes(focusMajorId) {
+            const typeConfig = getActiveMajorTypeConfig();
+            const targetMajorId = focusMajorId
+                || majorState.draftSelectedMajorIds.find(majorId => majorOptionMap[majorId]?.typeKey === majorState.activeTypeKey);
+
+            if (targetMajorId) {
+                const targetMeta = majorOptionMap[targetMajorId];
+                if (targetMeta && targetMeta.typeKey === majorState.activeTypeKey) {
+                    majorState.activeDisciplineIndex = targetMeta.disciplineIndex;
+                    majorState.activeCategoryIndex = targetMeta.categoryIndex;
+                    return;
+                }
+            }
+
+            majorState.activeDisciplineIndex = 0;
+            majorState.activeCategoryIndex = 0;
+
+            if (!typeConfig.disciplines.length) {
+                return;
+            }
+
+            const activeDiscipline = typeConfig.disciplines[majorState.activeDisciplineIndex];
+            if (!activeDiscipline?.categories?.length) {
+                majorState.activeCategoryIndex = 0;
+            }
+        }
+
+        function getActiveMajorDiscipline() {
+            const typeConfig = getActiveMajorTypeConfig();
+            const maxDisciplineIndex = Math.max(typeConfig.disciplines.length - 1, 0);
+            majorState.activeDisciplineIndex = Math.min(majorState.activeDisciplineIndex, maxDisciplineIndex);
+            return typeConfig.disciplines[majorState.activeDisciplineIndex] || null;
+        }
+
+        function getActiveMajorCategory() {
+            const activeDiscipline = getActiveMajorDiscipline();
+            const categories = activeDiscipline?.categories || [];
+            const maxCategoryIndex = Math.max(categories.length - 1, 0);
+            majorState.activeCategoryIndex = Math.min(majorState.activeCategoryIndex, maxCategoryIndex);
+            return categories[majorState.activeCategoryIndex] || null;
+        }
+
+        function getMajorSelectionCountByType(typeKey, majorIds = majorState.draftSelectedMajorIds) {
+            return majorIds.filter(majorId => majorOptionMap[majorId]?.typeKey === typeKey).length;
+        }
+
+        function filterMajorIdsByType(majorIds, typeKey = getCurrentPreferredMajorType()) {
+            return normalizeMajorIds(majorIds).filter(majorId => majorOptionMap[majorId]?.typeKey === typeKey);
+        }
+
+        function syncMajorSelectionWithCurrentType() {
+            const currentTypeKey = getCurrentPreferredMajorType();
+            majorState.activeTypeKey = currentTypeKey;
+            majorState.selectedMajorIds = filterMajorIdsByType(majorState.selectedMajorIds, currentTypeKey);
+            majorState.draftSelectedMajorIds = filterMajorIdsByType(majorState.draftSelectedMajorIds, currentTypeKey);
+            syncMajorBulkState();
+            syncMajorBrowserIndexes();
+        }
+
+        function syncMajorBulkState() {
+            const selectedIdSet = new Set(majorState.selectedMajorIds);
+            majorState.bulkSelectedMajorIds = majorState.bulkSelectedMajorIds.filter(majorId => selectedIdSet.has(majorId));
+
+            if (majorState.selectedMajorIds.length <= 1) {
+                majorState.isBulkEditMode = false;
+                majorState.bulkSelectedMajorIds = [];
+            }
+        }
+
+        function setSelectedMajors(nextSelectedMajorIds) {
+            majorState.selectedMajorIds = normalizeMajorIds(nextSelectedMajorIds);
+            syncMajorBulkState();
+            renderMajorPanel();
+        }
+
+        function normalizeMajorSearchQuery(query) {
+            return (query || '').trim().toLowerCase().replace(/\s+/g, '');
+        }
+
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function highlightMajorKeyword(text, query) {
+            const normalizedQuery = normalizeMajorSearchQuery(query);
+            if (!normalizedQuery) {
+                return escapeHtml(text);
+            }
+
+            const normalizedText = String(text).toLowerCase();
+            const matchIndex = normalizedText.indexOf(normalizedQuery);
+            if (matchIndex === -1) {
+                return escapeHtml(text);
+            }
+
+            const start = escapeHtml(text.slice(0, matchIndex));
+            const middle = escapeHtml(text.slice(matchIndex, matchIndex + normalizedQuery.length));
+            const end = escapeHtml(text.slice(matchIndex + normalizedQuery.length));
+            return `${start}<span class="text-brand-500">${middle}</span>${end}`;
+        }
+
+        function getMajorSearchResults() {
+            const normalizedQuery = normalizeMajorSearchQuery(majorState.searchQuery);
+            if (!normalizedQuery) {
+                return [];
+            }
+
+            return majorFlatOptionsByType[majorState.activeTypeKey].filter(major => {
+                const normalizedSearchText = major.searchText.replace(/\s+/g, '');
+                return normalizedSearchText.includes(normalizedQuery);
+            });
+        }
+
+        function renderMajorPanel() {
+            const emptyStateEl = document.getElementById('major-empty-state');
+            const selectedStateEl = document.getElementById('major-selected-state');
+            const selectedCountEl = document.getElementById('selected-major-count');
+            const selectedCaptionEl = document.getElementById('selected-major-caption');
+            const tagsContainerEl = document.getElementById('selected-major-tags');
+            const primaryActionEl = document.getElementById('major-primary-action');
+            const summaryEl = document.getElementById('major-panel-summary');
+            if (!emptyStateEl || !selectedStateEl || !tagsContainerEl || !primaryActionEl || !summaryEl) return;
+
+            const selectedMajors = majorState.selectedMajorIds
+                .map(majorId => majorOptionMap[majorId])
+                .filter(Boolean);
+            const selectedCount = selectedMajors.length;
+
+            emptyStateEl.classList.toggle('hidden', selectedCount > 0);
+            selectedStateEl.classList.toggle('hidden', selectedCount === 0);
+            primaryActionEl.innerText = selectedCount === 0 ? '添加专业' : '继续添加';
+            summaryEl.innerText = selectedCount === 0
+                ? ''
+                : `已选 ${selectedCount} 个专业，可继续补充`;
+
+            if (selectedCountEl) {
+                selectedCountEl.innerText = selectedCount;
+            }
+
+            if (selectedCaptionEl) {
+                selectedCaptionEl.innerText = selectedCount === 1
+                    ? '当前可直接删除，也可继续补充更多专业'
+                    : '支持随时继续补充专业';
+            }
+
+            tagsContainerEl.innerHTML = selectedMajors.map(major => `
+                    <div class="flex items-center gap-3 rounded-[16px] border border-white bg-white px-3 py-3 shadow-sm">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="truncate text-[13px] font-semibold text-gray-800">${major.name}</span>
+                                <span class="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-500">${major.typeLabel}</span>
+                            </div>
+                            <p class="mt-1 truncate text-[11px] text-gray-400">${major.disciplineName} · ${major.categoryName}</p>
+                        </div>
+                        <button type="button"
+                            onclick="removeMajorSelection('${major.id}')"
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-50 text-gray-400 active:bg-gray-100 transition-colors">
+                            <i class="fa-solid fa-xmark text-[11px]"></i>
+                        </button>
+                    </div>
+                `).join('');
+        }
+
+        function openMajorDrawer() {
+            majorState.activeTypeKey = getCurrentPreferredMajorType();
+            majorState.draftSelectedMajorIds = filterMajorIdsByType(majorState.selectedMajorIds, majorState.activeTypeKey);
+            majorState.searchQuery = '';
+            syncMajorBrowserIndexes();
+            renderMajorDrawer();
+            openDrawer('major-drawer');
+        }
+
+        function removeMajorSelection(majorId) {
+            setSelectedMajors(majorState.selectedMajorIds.filter(id => id !== majorId));
+        }
+
+        function clearAllMajorSelection() {
+            setSelectedMajors([]);
+        }
+
+        // 批量管理相关代码已移除
+
+        function selectMajorDiscipline(index) {
+            majorState.activeDisciplineIndex = index;
+            majorState.activeCategoryIndex = 0;
+            renderMajorDrawerBrowser();
+        }
+
+        function selectMajorCategory(index) {
+            majorState.activeCategoryIndex = index;
+            renderMajorDrawerBrowser();
+        }
+
+        function toggleDraftMajorSelection(majorId) {
+            const draftSet = new Set(majorState.draftSelectedMajorIds);
+            if (draftSet.has(majorId)) {
+                majorState.draftSelectedMajorIds = majorState.draftSelectedMajorIds.filter(id => id !== majorId);
+            } else {
+                majorState.draftSelectedMajorIds = [...majorState.draftSelectedMajorIds, majorId];
+                const selectedMeta = majorOptionMap[majorId];
+                if (selectedMeta?.typeKey === majorState.activeTypeKey) {
+                    syncMajorBrowserIndexes(majorId);
+                }
+            }
+
+            renderMajorDrawer();
+        }
+
+        function toggleDraftMajorDiscipline(disciplineId) {
+            const activeDiscipline = getActiveMajorDiscipline();
+            if (!activeDiscipline || activeDiscipline.id !== disciplineId) return;
+
+            const majorIds = [];
+            activeDiscipline.categories.forEach(c => {
+                c.majors.forEach(m => majorIds.push(m.id));
+            });
+            const draftSet = new Set(majorState.draftSelectedMajorIds);
+
+            const isAllSelected = majorIds.length > 0 && majorIds.every(id => draftSet.has(id));
+
+            if (isAllSelected) {
+                majorState.draftSelectedMajorIds = majorState.draftSelectedMajorIds.filter(id => !majorIds.includes(id));
+            } else {
+                majorIds.forEach(id => draftSet.add(id));
+                majorState.draftSelectedMajorIds = Array.from(draftSet);
+            }
+            renderMajorDrawer();
+        }
+
+        function toggleDraftMajorCategory(categoryId) {
+            const activeCategory = getActiveMajorCategory();
+            if (!activeCategory || activeCategory.id !== categoryId) return;
+
+            const majorIds = activeCategory.majors.map(m => m.id);
+            const draftSet = new Set(majorState.draftSelectedMajorIds);
+
+            const isAllSelected = majorIds.length > 0 && majorIds.every(id => draftSet.has(id));
+
+            if (isAllSelected) {
+                majorState.draftSelectedMajorIds = majorState.draftSelectedMajorIds.filter(id => !majorIds.includes(id));
+            } else {
+                majorIds.forEach(id => draftSet.add(id));
+                majorState.draftSelectedMajorIds = Array.from(draftSet);
+            }
+            renderMajorDrawer();
+        }
+
+        function updateMajorDrawerSearch(query) {
+            majorState.searchQuery = query || '';
+            renderMajorDrawer();
+        }
+
+        function clearMajorDrawerSearch() {
+            majorState.searchQuery = '';
+            const searchInput = document.getElementById('major-drawer-search-input');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            renderMajorDrawer();
+        }
+
+        function clearMajorDrawerSelection() {
+            majorState.draftSelectedMajorIds = [];
+            renderMajorDrawer();
+        }
+
+        function confirmMajorSelection() {
+            setSelectedMajors(filterMajorIdsByType(majorState.draftSelectedMajorIds, majorState.activeTypeKey));
+            closeAllDrawers();
+        }
+
+
+
+        function renderMajorDrawerBrowser() {
+            const disciplineListEl = document.getElementById('major-discipline-list');
+            const categoryListEl = document.getElementById('major-category-list');
+            const optionListEl = document.getElementById('major-option-list');
+            const disciplineTitleEl = document.getElementById('major-discipline-title');
+            const categoryTitleEl = document.getElementById('major-category-title');
+            const optionTitleEl = document.getElementById('major-option-title');
+            if (!disciplineListEl || !categoryListEl || !optionListEl) return;
+
+            const typeConfig = getActiveMajorTypeConfig();
+            const activeDiscipline = getActiveMajorDiscipline();
+            const activeCategory = getActiveMajorCategory();
+            const selectedMajorSet = new Set(majorState.draftSelectedMajorIds);
+
+            if (disciplineTitleEl) {
+                disciplineTitleEl.innerText = '门类';
+            }
+
+            if (categoryTitleEl) {
+                categoryTitleEl.innerText = activeDiscipline ? `专业类 · ${activeDiscipline.name}` : '专业类';
+            }
+
+            if (optionTitleEl) {
+                optionTitleEl.innerText = activeCategory ? `${activeCategory.name} · ${activeCategory.majors.length}个` : '专业';
+            }
+
+            disciplineListEl.innerHTML = typeConfig.disciplines.map((discipline, index) => `
+                <button type="button"
+                    onclick="selectMajorDiscipline(${index})"
+                    class="flex w-full items-center gap-2 border-l-[3px] px-3 py-3 text-left transition-all ${index === majorState.activeDisciplineIndex
+                    ? 'border-brand-500 bg-brand-50 text-brand-500'
+                    : 'border-transparent text-gray-700 active:bg-white'}">
+                    <span class="flex-1 text-[14px] ${index === majorState.activeDisciplineIndex ? 'font-bold' : 'font-medium'}">${discipline.name}</span>
+                    <span class="text-[10px] text-gray-300">${discipline.categories.length}</span>
+                </button>
+            `).join('');
+
+            const allMajorsInDiscipline = [];
+            (activeDiscipline?.categories || []).forEach(c => {
+                c.majors.forEach(m => allMajorsInDiscipline.push(m));
+            });
+            const isAllDisciplineSelected = allMajorsInDiscipline.length > 0 && allMajorsInDiscipline.every(m => selectedMajorSet.has(m.id));
+
+            let selectAllDisciplineBtnHtml = '';
+            if (activeDiscipline && activeDiscipline.categories.length > 0) {
+                selectAllDisciplineBtnHtml = `
+                    <button type="button"
+                        onclick="toggleDraftMajorDiscipline('${activeDiscipline.id}')"
+                        class="flex w-full items-center gap-2 border-b border-gray-100 border-l-[3px] border-l-transparent px-3 py-3 text-left transition-all ${isAllDisciplineSelected
+                        ? 'bg-brand-50/40 active:bg-brand-100/40' : 'bg-gray-50/50 active:bg-gray-100'}">
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate text-[13px] ${isAllDisciplineSelected ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}">全选本门类</div>
+                        </div>
+                        <div class="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-all ${isAllDisciplineSelected
+                        ? 'border-brand-500 bg-brand-500 text-white shadow-sm'
+                        : 'border-gray-300 bg-white text-transparent'}">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                    </button>
+                `;
+            }
+
+            categoryListEl.innerHTML = selectAllDisciplineBtnHtml + (activeDiscipline?.categories || []).map((category, index) => `
+                <button type="button"
+                    onclick="selectMajorCategory(${index})"
+                    class="flex w-full items-center gap-2 border-l-[3px] px-3 py-3 text-left transition-all ${index === majorState.activeCategoryIndex
+                    ? 'border-brand-500 bg-brand-50 text-brand-500'
+                    : 'border-transparent text-gray-700 active:bg-gray-50'}">
+                    <span class="flex-1 text-[14px] ${index === majorState.activeCategoryIndex ? 'font-bold' : 'font-medium'}">${category.name}</span>
+                    <span class="text-[10px] text-gray-300">${category.majors.length}</span>
+                </button>
+            `).join('');
+
+            const allMajorsInCategory = activeCategory?.majors || [];
+            const isAllSelected = allMajorsInCategory.length > 0 && allMajorsInCategory.every(m => selectedMajorSet.has(m.id));
+
+            let selectAllBtnHtml = '';
+            if (allMajorsInCategory.length > 1) {
+                selectAllBtnHtml = `
+                    <button type="button"
+                        onclick="toggleDraftMajorCategory('${activeCategory.id}')"
+                        class="flex w-full items-center gap-3 border-b border-gray-100 px-3 py-3 text-left transition-all ${isAllSelected
+                        ? 'bg-brand-50/40 active:bg-brand-100/40' : 'bg-gray-50/50 active:bg-gray-100'}">
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate text-[13px] ${isAllSelected ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}">全选本类专业</div>
+                        </div>
+                        <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border transition-all ${isAllSelected
+                        ? 'border-brand-500 bg-brand-500 text-white shadow-sm'
+                        : 'border-gray-300 bg-white text-transparent'}">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                    </button>
+                `;
+            }
+
+            optionListEl.innerHTML = selectAllBtnHtml + allMajorsInCategory.map(major => {
+                const isSelected = selectedMajorSet.has(major.id);
+                return `
+                    <button type="button"
+                        onclick="toggleDraftMajorSelection('${major.id}')"
+                        class="flex w-full items-center gap-3 border-b border-gray-50 px-3 py-3 text-left last:border-0 transition-all ${isSelected
+                        ? 'bg-brand-50/70 active:bg-brand-100/70'
+                        : 'bg-white active:bg-gray-50'}">
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate text-[14px] ${isSelected ? 'font-bold text-gray-900' : 'font-medium text-gray-800'}">${major.name}</div>
+                            <p class="mt-1 text-[11px] ${isSelected ? 'text-brand-400' : 'text-gray-400'}">${isSelected ? '已添加到专业偏好' : '点击加入当前专业偏好'}</p>
+                        </div>
+                        <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border transition-all ${isSelected
+                        ? 'border-brand-500 bg-brand-500 text-white shadow-sm'
+                        : 'border-gray-200 bg-white text-transparent'}">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderMajorSearchResults() {
+            const searchResultsEl = document.getElementById('major-drawer-search-results');
+            if (!searchResultsEl) return;
+
+            const results = getMajorSearchResults();
+            const selectedMajorSet = new Set(majorState.draftSelectedMajorIds);
+
+            if (results.length === 0) {
+                searchResultsEl.innerHTML = `
+                    <div class="rounded-[18px] border border-dashed border-gray-200 bg-gray-50/60 px-4 py-8 text-center">
+                        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-300">
+                            <i class="fa-solid fa-magnifying-glass text-[16px]"></i>
+                        </div>
+                        <p class="text-[13px] font-medium text-gray-500">没有找到匹配专业</p>
+                        <p class="mt-1 text-[11px] text-gray-400">可尝试输入专业全称、专业类，或切换到其他类型继续搜索</p>
+                    </div>
+                `;
+                return;
+            }
+
+            searchResultsEl.innerHTML = results.map(major => {
+                const isSelected = selectedMajorSet.has(major.id);
+                return `
+                    <button type="button"
+                        onclick="toggleDraftMajorSelection('${major.id}')"
+                        class="mb-2 flex w-full items-center gap-3 rounded-[16px] border px-3 py-3 text-left transition-all last:mb-0 ${isSelected
+                        ? 'border-brand-100 bg-brand-50/70'
+                        : 'border-gray-100 bg-white active:bg-gray-50'}">
+                        <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border transition-all ${isSelected
+                        ? 'border-brand-500 bg-brand-500 text-white shadow-sm'
+                        : 'border-gray-200 bg-white text-transparent'}">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate text-[14px] ${isSelected ? 'font-bold text-gray-900' : 'font-medium text-gray-800'}">${highlightMajorKeyword(major.name, majorState.searchQuery)}</div>
+                            <p class="mt-1 truncate text-[11px] text-gray-400">${major.typeLabel} · ${major.disciplineName} · ${major.categoryName}</p>
+                        </div>
+                        <span class="text-[11px] font-semibold ${isSelected ? 'text-brand-500' : 'text-gray-300'}">${isSelected ? '已选' : '添加'}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderMajorDrawer() {
+            const searchInputEl = document.getElementById('major-drawer-search-input');
+            const searchClearEl = document.getElementById('major-drawer-search-clear');
+            const summaryEl = document.getElementById('major-drawer-summary');
+            const selectedMetaEl = document.getElementById('major-drawer-selected-meta');
+            const searchResultsEl = document.getElementById('major-drawer-search-results');
+            const browserEl = document.getElementById('major-drawer-browser');
+            const confirmBtn = document.getElementById('major-confirm-btn');
+            const typeConfig = getActiveMajorTypeConfig();
+            const normalizedQuery = normalizeMajorSearchQuery(majorState.searchQuery);
+            const searchResults = getMajorSearchResults();
+            const selectedCount = majorState.draftSelectedMajorIds.length;
+
+            if (searchInputEl && searchInputEl.value !== majorState.searchQuery) {
+                searchInputEl.value = majorState.searchQuery;
+            }
+
+            if (searchClearEl) {
+                searchClearEl.className = `${normalizedQuery ? 'inline-flex ' : 'hidden '}h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-gray-400 active:bg-gray-100`;
+            }
+
+            if (summaryEl) {
+                summaryEl.innerText = normalizedQuery
+                    ? `搜索匹配结果，勾选后统一确认`
+                    : `可多选，支持搜索和分类浏览`;
+            }
+
+            if (selectedMetaEl) {
+                selectedMetaEl.innerText = normalizedQuery
+                    ? `找到 ${searchResults.length} 个结果 · 已暂选 ${selectedCount} 个专业`
+                    : selectedCount === 0
+                        ? '还没有暂选专业，可通过搜索或分类浏览逐步添加'
+                        : `已暂选 ${selectedCount} 个专业，确认后会展示在当前页面中`;
+            }
+
+            if (confirmBtn) {
+                confirmBtn.innerText = selectedCount > 0 ? `确认选择（${selectedCount}）` : '保存当前选择';
+            }
+
+            if (browserEl) {
+                browserEl.classList.toggle('hidden', Boolean(normalizedQuery));
+            }
+
+            if (searchResultsEl) {
+                searchResultsEl.classList.toggle('hidden', !normalizedQuery);
+            }
+
+
+
+            if (normalizedQuery) {
+                renderMajorSearchResults();
+            } else {
+                renderMajorDrawerBrowser();
+            }
+        }
+
+        function buildMajorSubmitPayload() {
+            const selectedMajors = majorState.selectedMajorIds
+                .map(majorId => majorOptionMap[majorId])
+                .filter(Boolean);
+
+            return {
+                selectedMajorIds: majorState.selectedMajorIds.slice(),
+                selectedMajors: selectedMajors.map(major => ({
+                    id: major.id,
+                    name: major.name,
+                    typeKey: major.typeKey,
+                    typeLabel: major.typeLabel,
+                    disciplineId: major.disciplineId,
+                    disciplineName: major.disciplineName,
+                    categoryId: major.categoryId,
+                    categoryName: major.categoryName
+                })),
+                selectedTypeKeys: Array.from(new Set(selectedMajors.map(major => major.typeKey))),
+                selectionMode: selectedMajors.length === 0 ? 'none' : selectedMajors.length === 1 ? 'single' : 'multiple'
+            };
+        }
+
+        const REGION_SELECTION_CONFIG = window.regionPreferenceConfig || {
+            fallbackProvinceName: '北京',
+            currentProvinceName: null,
+            fallbackYearText: '2026年',
+            currentYearText: null,
+            defaultSelectedIds: null
+        };
+        window.regionPreferenceConfig = REGION_SELECTION_CONFIG;
+
+        const allRegions = [
+            { id: 'beijing', name: '北京' },
+            { id: 'tianjin', name: '天津' },
+            { id: 'hebei', name: '河北' },
+            { id: 'shanxi', name: '山西' },
+            { id: 'neimenggu', name: '内蒙古' },
+            { id: 'liaoning', name: '辽宁' },
+            { id: 'jilin', name: '吉林' },
+            { id: 'heilongjiang', name: '黑龙江' },
+            { id: 'shanghai', name: '上海' },
+            { id: 'jiangsu', name: '江苏' },
+            { id: 'zhejiang', name: '浙江' },
+            { id: 'anhui', name: '安徽' },
+            { id: 'fujian', name: '福建' },
+            { id: 'jiangxi', name: '江西' },
+            { id: 'shandong', name: '山东' },
+            { id: 'henan', name: '河南' },
+            { id: 'hubei', name: '湖北' },
+            { id: 'hunan', name: '湖南' },
+            { id: 'guangdong', name: '广东' },
+            { id: 'guangxi', name: '广西' },
+            { id: 'hainan', name: '海南' },
+            { id: 'chongqing', name: '重庆' },
+            { id: 'sichuan', name: '四川' },
+            { id: 'guizhou', name: '贵州' },
+            { id: 'yunnan', name: '云南' },
+            { id: 'shaanxi', name: '陕西' },
+            { id: 'gansu', name: '甘肃' },
+            { id: 'qinghai', name: '青海' },
+            { id: 'ningxia', name: '宁夏' },
+            { id: 'xinjiang', name: '新疆' }
+        ];
+
+        const ALL_REGION_IDS = allRegions.map(region => region.id);
+        const regionIdToNameMap = Object.fromEntries(allRegions.map(region => [region.id, region.name]));
+        const regionNameToIdMap = Object.fromEntries(allRegions.map(region => [region.name, region.id]));
+        const regionSearchAliasMap = {
+            neimenggu: ['内蒙'],
+            heilongjiang: ['黑龙'],
+            guangxi: ['广西自治区'],
+            ningxia: ['宁夏自治区'],
+            xinjiang: ['新疆自治区'],
+            shaanxi: ['陕西省'],
+            shanxi: ['山西省']
+        };
+
+        const provinceNeighborhoodMap = {
+            beijing: ['beijing', 'tianjin', 'hebei', 'shanxi', 'liaoning'],
+            tianjin: ['tianjin', 'beijing', 'hebei', 'shandong'],
+            hebei: ['hebei', 'beijing', 'tianjin', 'shanxi', 'neimenggu', 'liaoning', 'shandong', 'henan'],
+            shanxi: ['shanxi', 'hebei', 'henan', 'shaanxi', 'neimenggu'],
+            neimenggu: ['neimenggu', 'hebei', 'shanxi', 'shaanxi', 'ningxia', 'gansu', 'liaoning', 'jilin', 'heilongjiang'],
+            liaoning: ['liaoning', 'jilin', 'hebei', 'neimenggu', 'beijing'],
+            jilin: ['jilin', 'liaoning', 'heilongjiang', 'neimenggu'],
+            heilongjiang: ['heilongjiang', 'jilin', 'neimenggu'],
+            shanghai: ['shanghai', 'jiangsu', 'zhejiang', 'anhui'],
+            jiangsu: ['jiangsu', 'shanghai', 'zhejiang', 'anhui', 'shandong', 'henan'],
+            zhejiang: ['zhejiang', 'shanghai', 'jiangsu', 'anhui', 'jiangxi', 'fujian'],
+            anhui: ['anhui', 'jiangsu', 'zhejiang', 'jiangxi', 'hubei', 'henan', 'shandong'],
+            fujian: ['fujian', 'zhejiang', 'jiangxi', 'guangdong'],
+            jiangxi: ['jiangxi', 'zhejiang', 'anhui', 'fujian', 'guangdong', 'hunan', 'hubei'],
+            shandong: ['shandong', 'hebei', 'henan', 'anhui', 'jiangsu', 'tianjin'],
+            henan: ['henan', 'hebei', 'shandong', 'anhui', 'hubei', 'shanxi', 'shaanxi'],
+            hubei: ['hubei', 'henan', 'anhui', 'jiangxi', 'hunan', 'chongqing', 'shaanxi'],
+            hunan: ['hunan', 'hubei', 'jiangxi', 'guangdong', 'guangxi', 'guizhou', 'chongqing'],
+            guangdong: ['guangdong', 'fujian', 'jiangxi', 'hunan', 'guangxi', 'hainan'],
+            guangxi: ['guangxi', 'guangdong', 'hunan', 'guizhou', 'yunnan', 'hainan'],
+            hainan: ['hainan', 'guangdong', 'guangxi'],
+            chongqing: ['chongqing', 'sichuan', 'guizhou', 'hunan', 'hubei', 'shaanxi'],
+            sichuan: ['sichuan', 'chongqing', 'guizhou', 'yunnan', 'qinghai', 'gansu', 'shaanxi'],
+            guizhou: ['guizhou', 'sichuan', 'chongqing', 'hunan', 'guangxi', 'yunnan'],
+            yunnan: ['yunnan', 'sichuan', 'guizhou', 'guangxi'],
+            shaanxi: ['shaanxi', 'shanxi', 'henan', 'hubei', 'chongqing', 'sichuan', 'gansu', 'ningxia', 'neimenggu'],
+            gansu: ['gansu', 'xinjiang', 'qinghai', 'sichuan', 'shaanxi', 'ningxia', 'neimenggu'],
+            qinghai: ['qinghai', 'xinjiang', 'sichuan', 'gansu'],
+            ningxia: ['ningxia', 'neimenggu', 'shaanxi', 'gansu'],
+            xinjiang: ['xinjiang', 'gansu', 'qinghai']
+        };
+
+        const regionPresetDefinitions = [
+            { key: 'nationwide', name: '全国', regionIds: ALL_REGION_IDS },
+            { key: 'home-nearby', name: '本省及周边', getRegionIds: resolveHomeAndNearbyRegionIds },
+            { key: 'jing-jin-ji', name: '京津冀', regionIds: ['beijing', 'tianjin', 'hebei'] },
+            { key: 'jiang-zhe-hu', name: '江浙沪', regionIds: ['jiangsu', 'zhejiang', 'shanghai'] },
+            { key: 'changjiang-delta', name: '长三角', regionIds: ['shanghai', 'jiangsu', 'zhejiang', 'anhui'] }
+        ];
+
+        const regionState = {
+            allRegions,
+            considerRegionIds: [],
+            sortedConsiderRegionIds: [],
+            avoidRegionIds: [],
+            quickPresetKey: null,
+            defaultConsiderSelection: [],
+            defaultAvoidSelection: [],
+
+            // Drawer state
+            drawerMode: 'consider', // 'consider' | 'avoid'
+            draftSelectedRegionIds: [],
+            searchQuery: '',
+
+            isConsiderExpanded: false,
+            isSortMode: false
+        };
+
+        let considerRegionSortable = null;
+
+        function normalizeRegionIds(ids) {
+            const resolvedIds = (ids || [])
+                .map(regionIdOrName => regionIdToNameMap[regionIdOrName] ? regionIdOrName : regionNameToIdMap[regionIdOrName])
+                .filter(Boolean);
+            const uniqueIds = new Set(resolvedIds);
+            return ALL_REGION_IDS.filter(regionId => uniqueIds.has(regionId));
+        }
+
+        function areRegionSetsEqual(leftIds, rightIds) {
+            if (leftIds.length !== rightIds.length) return false;
+            const rightSet = new Set(rightIds);
+            return leftIds.every(regionId => rightSet.has(regionId));
+        }
+
+        function normalizeRegionSearchQuery(query) {
+            return (query || '').trim().toLowerCase().replace(/\s+/g, '');
+        }
+
+        function getRegionSearchText(region) {
+            return [
+                region.name,
+                region.id,
+                ...(regionSearchAliasMap[region.id] || [])
+            ].join('|').toLowerCase();
+        }
+
+        function getFilteredRegions() {
+            const normalizedQuery = normalizeRegionSearchQuery(regionState.searchQuery);
+            if (!normalizedQuery) {
+                return regionState.allRegions;
+            }
+
+            return regionState.allRegions.filter(region => getRegionSearchText(region).includes(normalizedQuery));
+        }
+
+        function getCurrentProvinceName() {
+            return REGION_SELECTION_CONFIG.currentProvinceName
+                || document.getElementById('display-province')?.innerText?.trim()
+                || REGION_SELECTION_CONFIG.fallbackProvinceName;
+        }
+
+        function getCurrentProvinceId() {
+            const provinceName = getCurrentProvinceName();
+            return regionNameToIdMap[provinceName] || regionNameToIdMap[REGION_SELECTION_CONFIG.fallbackProvinceName] || ALL_REGION_IDS[0];
+        }
+
+        function resolveHomeAndNearbyRegionIds() {
+            const currentProvinceId = getCurrentProvinceId();
+            return normalizeRegionIds(provinceNeighborhoodMap[currentProvinceId] || [currentProvinceId]);
+        }
+
+        function resolveRegionPresets() {
+            return regionPresetDefinitions.map(preset => ({
+                ...preset,
+                regionIds: normalizeRegionIds(typeof preset.getRegionIds === 'function' ? preset.getRegionIds() : preset.regionIds || [])
+            }));
+        }
+
+        function syncSortedSelectedIds(nextSelectedIds, previousSortedIds) {
+            const selectedIdSet = new Set(nextSelectedIds);
+            const preservedIds = previousSortedIds.filter(regionId => selectedIdSet.has(regionId));
+            const preservedSet = new Set(preservedIds);
+            const appendedIds = nextSelectedIds.filter(regionId => !preservedSet.has(regionId));
+            return [...preservedIds, ...appendedIds];
+        }
+
+        function updateQuickPresetKey() {
+            const matchedPreset = resolveRegionPresets().find(preset => areRegionSetsEqual(regionState.considerRegionIds, preset.regionIds));
+            regionState.quickPresetKey = matchedPreset ? matchedPreset.key : null;
+        }
+
+        function setRegionPreferences(nextConsiderIds, nextAvoidIds, options = {}) {
+            const { resetSortOrder = false } = options;
+            const normalizedConsiderIds = normalizeRegionIds(nextConsiderIds);
+            const considerSet = new Set(normalizedConsiderIds);
+            const normalizedAvoidIds = normalizeRegionIds(nextAvoidIds).filter(regionId => !considerSet.has(regionId));
+
+            regionState.considerRegionIds = normalizedConsiderIds;
+            regionState.avoidRegionIds = normalizedAvoidIds;
+            regionState.sortedConsiderRegionIds = resetSortOrder
+                ? normalizedConsiderIds.slice()
+                : syncSortedSelectedIds(normalizedConsiderIds, regionState.sortedConsiderRegionIds);
+
+            if (regionState.sortedConsiderRegionIds.length <= 1) {
+                regionState.isSortMode = false;
+            }
+
+            if (regionState.considerRegionIds.length === 0) {
+                regionState.isConsiderExpanded = false;
+            }
+
+            renderRegionExperience();
+
+            if (window.__preferenceBootstrapped) {
+                renderCollegePanel();
+                renderCollegeDrawer();
+            }
+        }
+
+        function setRegionPreference(regionId, preference) {
+            const considerSet = new Set(regionState.considerRegionIds);
+            const avoidSet = new Set(regionState.avoidRegionIds);
+            const isConsidered = considerSet.has(regionId);
+            const isAvoided = avoidSet.has(regionId);
+            const regionName = regionIdToNameMap[regionId] || regionId;
+
+            if (preference === 'consider') {
+                if (isConsidered) {
+                    considerSet.delete(regionId);
+                } else {
+                    if (isAvoided) {
+                        showToast(`已将 ${regionName} 从『不考虑』移至『优先考虑』`);
+                    }
+                    considerSet.add(regionId);
+                    avoidSet.delete(regionId);
+                }
+            } else if (preference === 'avoid') {
+                if (isAvoided) {
+                    avoidSet.delete(regionId);
+                } else {
+                    if (isConsidered) {
+                        showToast(`已将 ${regionName} 从『优先考虑』移至『不考虑』`);
+                    }
+                    avoidSet.add(regionId);
+                    considerSet.delete(regionId);
+                }
+            } else {
+                considerSet.delete(regionId);
+                avoidSet.delete(regionId);
+            }
+
+            setRegionPreferences(Array.from(considerSet), Array.from(avoidSet));
+        }
+
+        function removeConsideredRegion(regionId) {
+            setRegionPreference(regionId, 'unset');
+        }
+
+        function removeAvoidedRegion(regionId) {
+            setRegionPreference(regionId, 'unset');
+        }
+
+        function applyRegionPreset(presetKey) {
+            const targetPreset = resolveRegionPresets().find(preset => preset.key === presetKey);
+            if (!targetPreset) return;
+
+            const nextConsiderIds = targetPreset.regionIds;
+            const currentAvoidIds = regionState.avoidRegionIds;
+
+            // 计算冲突（原先在不考虑名单中，但由于快捷包现在要移入优先名单的地区）
+            const considerSet = new Set(nextConsiderIds);
+            const conflicts = currentAvoidIds.filter(id => considerSet.has(id));
+
+            if (conflicts.length > 0) {
+                if (conflicts.length <= 2) {
+                    const names = conflicts.map(id => regionIdToNameMap[id] || id).join('、');
+                    showToast(`已将 ${names} 从『不考虑』移至『优先考虑』`);
+                } else {
+                    showToast(`已将 ${conflicts.length} 个地区从『不考虑』移至『优先考虑』`);
+                }
+            }
+
+            setRegionPreferences(
+                nextConsiderIds,
+                currentAvoidIds.filter(regionId => !considerSet.has(regionId)),
+                { resetSortOrder: true }
+            );
+        }
+
+        function selectAllRegions() {
+            setRegionPreferences(ALL_REGION_IDS, [], { resetSortOrder: true });
+        }
+
+        function clearAllRegions() {
+            setRegionPreferences([], [], { resetSortOrder: true });
+        }
+
+        function clearAvoidRegions() {
+            setRegionPreferences(regionState.considerRegionIds, [], { resetSortOrder: false });
+        }
+
+        function restoreDefaultRegions() {
+            setRegionPreferences(regionState.defaultConsiderSelection, regionState.defaultAvoidSelection, { resetSortOrder: true });
+        }
+
+        function updateRegionDrawerSearch(query) {
+            regionState.searchQuery = query || '';
+            renderRegionDrawer();
+        }
+
+        function clearRegionDrawerSearch() {
+            regionState.searchQuery = '';
+            const searchInput = document.getElementById('region-drawer-search-input');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            renderRegionDrawer();
+        }
+
+        function toggleConsiderRegionExpand() {
+            regionState.isConsiderExpanded = !regionState.isConsiderExpanded;
+            renderConsiderRegionPanel();
+        }
+
+        function toggleRegionSortMode() {
+            if (regionState.sortedConsiderRegionIds.length <= 1) return;
+            regionState.isSortMode = !regionState.isSortMode;
+            renderConsiderRegionPanel();
+        }
+
+        function renderRegionPresetSection() {
+            const presetContainer = document.getElementById('region-preset-container');
+            const bulkActionsContainer = document.getElementById('region-bulk-actions');
+
+            const currentProvinceName = '四川省'; // Mock user home province
+            const resolvedPresets = resolveRegionPresets();
+
+            if (presetContainer) {
+                presetContainer.innerHTML = resolvedPresets.map(preset => {
+                    const isActive = preset.key === regionState.quickPresetKey;
+                    return `
+                        <button type="button"
+                            onclick="applyRegionPreset('${preset.key}')"
+                            class="rounded-full px-3.5 py-2 text-[12px] font-semibold transition-all active:scale-[0.98] ${isActive
+                            ? 'bg-brand-500 text-white shadow-[0_8px_18px_-10px_rgba(255,106,44,0.72)]'
+                            : 'bg-white text-gray-600 border border-white shadow-sm'}">
+                            ${preset.name}
+                        </button>
+                    `;
+                }).join('');
+            }
+
+            if (bulkActionsContainer) {
+                const shouldShowRestoreDefault = regionState.defaultConsiderSelection.length > 0
+                    || regionState.defaultAvoidSelection.length > 0;
+                const actionDefinitions = [
+                    {
+                        label: '全部考虑',
+                        handler: 'selectAllRegions()',
+                        icon: 'fa-check-double',
+                        active: regionState.considerRegionIds.length === ALL_REGION_IDS.length && regionState.avoidRegionIds.length === 0
+                    },
+                    {
+                        label: '清空设置',
+                        handler: 'clearAllRegions()',
+                        icon: 'fa-broom',
+                        active: regionState.considerRegionIds.length === 0 && regionState.avoidRegionIds.length === 0
+                    }
+                ];
+
+                if (shouldShowRestoreDefault) {
+                    actionDefinitions.push({
+                        label: '恢复默认',
+                        handler: 'restoreDefaultRegions()',
+                        icon: 'fa-arrow-rotate-left',
+                        active: areRegionSetsEqual(regionState.considerRegionIds, regionState.defaultConsiderSelection)
+                            && areRegionSetsEqual(regionState.avoidRegionIds, regionState.defaultAvoidSelection)
+                    });
+                }
+
+                bulkActionsContainer.innerHTML = actionDefinitions.map(action => `
+                    <button type="button"
+                        onclick="${action.handler}"
+                        class="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[10px] font-semibold leading-none transition-all active:scale-[0.98] ${action.active
+                        ? 'bg-brand-50 text-brand-500'
+                        : 'bg-transparent text-gray-400 hover:bg-white/80 hover:text-gray-500'}">
+                        <i class="fa-solid ${action.icon} text-[9px] opacity-80"></i>
+                        ${action.label}
+                    </button>
+                `).join('');
+            }
+        }
+
+        function renderConsiderRegionPanel() {
+            const consideredRegions = regionState.sortedConsiderRegionIds.map(regionId => ({
+                id: regionId,
+                name: regionIdToNameMap[regionId]
+            }));
+            const consideredCount = consideredRegions.length;
+            const titleEl = document.getElementById('consider-region-title');
+            const summaryEl = document.getElementById('consider-region-summary');
+            const emptyEl = document.getElementById('consider-region-empty');
+            const tagsWrapperEl = document.getElementById('consider-region-tags-wrapper');
+            const tagsEl = document.getElementById('consider-region-tags');
+            const expandBtn = document.getElementById('consider-region-expand-btn');
+            const sortEntryEl = document.getElementById('consider-region-sort-entry');
+            const sortPanelEl = document.getElementById('consider-region-sort-panel');
+
+            if (titleEl) {
+                titleEl.innerText = `优先考虑（${consideredCount}个）`;
+            }
+
+            const headerActionsEl = document.getElementById('consider-region-header-actions');
+            if (headerActionsEl) {
+                headerActionsEl.innerHTML = `
+                    <button type="button" onclick="openRegionDrawer('consider')"
+                        class="shrink-0 rounded-[12px] bg-brand-50 px-3 py-2 text-[11px] font-semibold text-brand-500 shadow-[inset_0_0_0_1px_rgba(255,106,44,0.12)] active:scale-[0.98] transition-all">
+                        添加地区
+                    </button>
+                `;
+            }
+
+            if (summaryEl) {
+                summaryEl.innerText = consideredCount === 0
+                    ? '可先用快捷地区包，再逐个微调'
+                    : consideredCount === 1
+                        ? '已标记 1 个优先考虑地区，会参与优先推荐'
+                        : regionState.isSortMode
+                            ? '长按拖动调整顺序，越靠前优先级越高'
+                            : '已标记的优先考虑地区会按顺序参与优先推荐';
+            }
+
+            if (emptyEl) {
+                emptyEl.classList.toggle('hidden', consideredCount > 0);
+            }
+
+            if (tagsWrapperEl) {
+                tagsWrapperEl.classList.toggle('hidden', consideredCount === 0);
+            }
+
+            if (sortEntryEl) {
+                sortEntryEl.className = `${consideredCount <= 1 ? 'hidden ' : ''}shrink-0 inline-flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-[11px] font-semibold active:scale-[0.98] transition-all ${regionState.isSortMode
+                    ? 'bg-brand-500 text-white shadow-[0_10px_20px_-12px_rgba(255,106,44,0.65)]'
+                    : 'bg-brand-50 text-brand-500 shadow-[inset_0_0_0_1px_rgba(255,106,44,0.12)]'}`;
+                sortEntryEl.innerHTML = regionState.isSortMode
+                    ? '<i class="fa-solid fa-check text-[10px]"></i><span>完成排序</span>'
+                    : '<i class="fa-solid fa-arrow-down-short-wide text-[10px]"></i><span>意向排序</span>';
+            }
+
+            if (tagsEl) {
+                tagsEl.innerHTML = consideredRegions.map(region => `
+                    <button type="button"
+                        onclick="removeConsideredRegion('${region.id}')"
+                        class="inline-flex items-center gap-1.5 rounded-full border border-brand-100 bg-white pl-3 pr-2 py-1.5 text-[12px] font-medium text-brand-500 shadow-sm active:scale-[0.98] transition-all">
+                        <span>${region.name}</span>
+                        <i class="fa-solid fa-xmark text-[10px] text-brand-300"></i>
+                    </button>
+                `).join('');
+
+                tagsEl.style.overflow = 'hidden';
+                tagsEl.style.maxHeight = regionState.isConsiderExpanded ? 'none' : '72px';
+
+                const needsExpand = consideredCount > 0 && tagsEl.scrollHeight > 72;
+                if (expandBtn) {
+                    expandBtn.classList.toggle('hidden', !needsExpand);
+                    expandBtn.innerText = regionState.isConsiderExpanded ? '收起' : '展开全部';
+                }
+
+                if (!needsExpand) {
+                    tagsEl.style.maxHeight = 'none';
+                }
+            }
+
+            if (sortPanelEl) {
+                sortPanelEl.classList.toggle('hidden', !regionState.isSortMode || consideredCount === 0);
+            }
+
+            renderConsiderRegionSortList();
+        }
+
+        function renderConsiderRegionSortList() {
+            const sortListEl = document.getElementById('consider-region-sort-list');
+            if (!sortListEl) return;
+
+            const consideredRegions = regionState.sortedConsiderRegionIds.map(regionId => ({
+                id: regionId,
+                name: regionIdToNameMap[regionId]
+            }));
+
+            sortListEl.innerHTML = consideredRegions.map((region, index) => `
+                <div data-region-id="${region.id}"
+                    class="flex items-center gap-3 rounded-[16px] border border-white bg-white px-3 py-3 shadow-sm">
+                    <div
+                        class="drag-handle-sort flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-300 touch-none">
+                        <i class="fa-solid fa-grip-lines text-[12px]"></i>
+                    </div>
+                    <div
+                        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-500">
+                        ${index + 1}
+                    </div>
+                    <span class="flex-1 text-[14px] font-medium text-gray-800">${region.name}</span>
+                    <button type="button"
+                        onclick="removeConsideredRegion('${region.id}')"
+                        class="flex h-7 w-7 items-center justify-center rounded-full bg-gray-50 text-gray-400 active:bg-gray-100">
+                        <i class="fa-solid fa-minus text-[11px]"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            if (considerRegionSortable) {
+                considerRegionSortable.destroy();
+                considerRegionSortable = null;
+            }
+
+            if (!regionState.isSortMode || consideredRegions.length <= 1 || typeof Sortable === 'undefined') {
+                return;
+            }
+
+            // 排序仅作用于优先考虑地区，避免与全量明细列表耦合。
+            considerRegionSortable = new Sortable(sortListEl, {
+                animation: 220,
+                handle: '.drag-handle-sort',
+                ghostClass: 'opacity-50',
+                dragClass: 'shadow-2xl',
+                delay: 150,
+                delayOnTouchOnly: true,
+                onStart(evt) {
+                    evt.item.classList.add('ring-2', 'ring-brand-100');
+                },
+                onEnd(evt) {
+                    evt.item.classList.remove('ring-2', 'ring-brand-100');
+                    regionState.sortedConsiderRegionIds = Array.from(sortListEl.children)
+                        .map(item => item.getAttribute('data-region-id'))
+                        .filter(Boolean);
+                    renderConsiderRegionPanel();
+                }
+            });
+        }
+
+        function renderAvoidRegionPanel() {
+            const avoidedRegions = regionState.avoidRegionIds.map(regionId => ({
+                id: regionId,
+                name: regionIdToNameMap[regionId]
+            }));
+            const avoidedCount = avoidedRegions.length;
+            const titleEl = document.getElementById('avoid-region-title');
+            const summaryEl = document.getElementById('avoid-region-summary');
+            const emptyEl = document.getElementById('avoid-region-empty');
+            const tagsWrapperEl = document.getElementById('avoid-region-tags-wrapper');
+            const tagsEl = document.getElementById('avoid-region-tags');
+            const clearBtn = document.getElementById('avoid-region-clear-btn');
+
+            if (titleEl) {
+                titleEl.innerText = `不考虑地区（${avoidedCount}个）`;
+            }
+
+            const headerActionsEl = document.getElementById('avoid-region-header-actions');
+            if (headerActionsEl) {
+                headerActionsEl.innerHTML = `
+                    <button type="button" onclick="openRegionDrawer('avoid')"
+                        class="shrink-0 rounded-[12px] bg-white px-3 py-2 text-[11px] font-semibold text-gray-700 shadow-[inset_0_0_0_1px_rgba(226,232,240,1)] active:scale-[0.98] transition-all mr-2">
+                        添加地区
+                    </button>
+                    <button id="avoid-region-clear-btn" type="button" onclick="clearAvoidRegions()"
+                        class="${avoidedCount === 0 ? 'hidden ' : ''}shrink-0 rounded-[12px] bg-white px-3 py-2 text-[11px] font-semibold text-gray-400 shadow-sm active:scale-[0.98] transition-all border border-gray-100">
+                        清空
+                    </button>
+                `;
+            }
+
+            if (summaryEl) {
+                summaryEl.innerText = avoidedCount === 0
+                    ? '暂未设置明确排除地区'
+                    : '这些地区将不会进入优先推荐范围';
+            }
+
+            if (clearBtn) {
+                clearBtn.className = `${avoidedCount === 0 ? 'hidden ' : ''}shrink-0 rounded-[12px] bg-white px-3 py-2 text-[11px] font-semibold text-gray-400 shadow-sm active:scale-[0.98] transition-all`;
+            }
+
+            if (emptyEl) {
+                emptyEl.classList.toggle('hidden', avoidedCount > 0);
+            }
+
+            if (tagsWrapperEl) {
+                tagsWrapperEl.classList.toggle('hidden', avoidedCount === 0);
+            }
+
+            if (tagsEl) {
+                tagsEl.innerHTML = avoidedRegions.map(region => `
+                    <button type="button"
+                        onclick="removeAvoidedRegion('${region.id}')"
+                        class="inline-flex items-center gap-1.5 rounded-full border border-[#F0D5C8] bg-[#FFF8F4] pl-3 pr-2 py-1.5 text-[12px] font-medium text-[#A15A36] shadow-sm active:scale-[0.98] transition-all">
+                        <span>${region.name}</span>
+                        <i class="fa-solid fa-xmark text-[10px] text-[#D7A58B]"></i>
+                    </button>
+                `).join('');
+            }
+        }
+
+        function openRegionDrawer(mode) {
+            regionState.drawerMode = mode;
+            regionState.searchQuery = '';
+            regionState.draftSelectedRegionIds = mode === 'consider'
+                ? regionState.considerRegionIds.slice()
+                : regionState.avoidRegionIds.slice();
+
+            renderRegionDrawer();
+            openDrawer('region-drawer');
+        }
+
+        function toggleDraftRegionSelection(regionId) {
+            const draftSet = new Set(regionState.draftSelectedRegionIds);
+
+            // If we are adding to consider, must remove from avoid list if present, and vice versa.
+            // But right now we only manage the draft state of this ONE mode.
+            if (draftSet.has(regionId)) {
+                draftSet.delete(regionId);
+            } else {
+                draftSet.add(regionId);
+            }
+
+            regionState.draftSelectedRegionIds = Array.from(draftSet);
+            renderRegionDrawer();
+        }
+
+        function confirmRegionSelection() {
+            const draftSet = new Set(regionState.draftSelectedRegionIds);
+
+            if (regionState.drawerMode === 'consider') {
+                const conflicts = regionState.avoidRegionIds.filter(id => draftSet.has(id));
+                if (conflicts.length > 0) {
+                    if (conflicts.length <= 2) {
+                        const names = conflicts.map(id => regionIdToNameMap[id] || id).join('、');
+                        showToast(`已将 ${names} 从『不考虑』移至『优先考虑』`);
+                    } else {
+                        showToast(`已将 ${conflicts.length} 个地区从『不考虑』移至『优先考虑』`);
+                    }
+                }
+                setRegionPreferences(regionState.draftSelectedRegionIds, regionState.avoidRegionIds);
+            } else {
+                const conflicts = regionState.considerRegionIds.filter(id => draftSet.has(id));
+                if (conflicts.length > 0) {
+                    if (conflicts.length <= 2) {
+                        const names = conflicts.map(id => regionIdToNameMap[id] || id).join('、');
+                        showToast(`已将 ${names} 从『优先考虑』移至『不考虑』`);
+                    } else {
+                        showToast(`已将 ${conflicts.length} 个地区从『优先考虑』移至『不考虑』`);
+                    }
+                }
+
+                // 关键修复：主动从 consider 中剔除即将被加入 avoid 的冲突项
+                // 否则 setRegionPreferences() 会优先保障 consider 的内容，导致 avoid 的选择被静默丢弃
+                const nextConsiderIds = regionState.considerRegionIds.filter(id => !draftSet.has(id));
+                setRegionPreferences(nextConsiderIds, regionState.draftSelectedRegionIds);
+            }
+            closeAllDrawers();
+        }
+
+        function buildRegionDrawerItem(region, isSelected) {
+            return `
+                <button type="button"
+                    onclick="toggleDraftRegionSelection('${region.id}')"
+                    class="mb-2 flex w-full items-center gap-3 rounded-[16px] border px-3 py-3 text-left transition-all last:mb-0 ${isSelected
+                    ? 'border-brand-100 bg-brand-50/70'
+                    : 'border-gray-100 bg-white active:bg-gray-50'}">
+                    <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border transition-all ${isSelected
+                    ? 'border-brand-500 bg-brand-500 text-white shadow-sm'
+                    : 'border-gray-200 bg-white text-transparent'}">
+                        <i class="fa-solid fa-check text-[10px]"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="truncate text-[14px] ${isSelected ? 'font-bold text-gray-900' : 'font-medium text-gray-800'}">${highlightMajorKeyword(region.name, regionState.searchQuery)}</div>
+                    </div>
+                </button>
+            `;
+        }
+
+        function renderRegionDrawer() {
+            const titleEl = document.getElementById('region-drawer-title');
+            const summaryEl = document.getElementById('region-drawer-summary');
+            const selectedMetaEl = document.getElementById('region-drawer-selected-meta');
+            const searchInputEl = document.getElementById('region-drawer-search-input');
+            const searchClearEl = document.getElementById('region-drawer-search-clear');
+            const confirmBtn = document.getElementById('region-confirm-btn');
+            const listContainer = document.getElementById('region-drawer-list');
+
+            const isConsider = regionState.drawerMode === 'consider';
+            const draftSet = new Set(regionState.draftSelectedRegionIds);
+            const oppositeSet = new Set(isConsider ? regionState.avoidRegionIds : regionState.considerRegionIds);
+
+            if (titleEl) {
+                titleEl.innerText = isConsider ? '添加优先考虑' : '添加排除地区';
+            }
+
+            if (summaryEl) {
+                summaryEl.innerText = isConsider
+                    ? '已选地区将优先推荐'
+                    : '推荐时将自动避开以下地区';
+            }
+
+            const normalizedQuery = normalizeRegionSearchQuery(regionState.searchQuery);
+            const filteredRegions = getFilteredRegions();
+
+            if (searchInputEl && searchInputEl.value !== regionState.searchQuery) {
+                searchInputEl.value = regionState.searchQuery;
+            }
+
+            if (searchClearEl) {
+                searchClearEl.className = `${normalizedQuery ? 'inline-flex ' : 'hidden '}h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-gray-400 active:bg-gray-100`;
+            }
+
+            if (selectedMetaEl) {
+                if (normalizedQuery) {
+                    selectedMetaEl.innerText = `查找到 ${filteredRegions.length} 个地区 · 已选 ${draftSet.size} 个`;
+                } else {
+                    selectedMetaEl.innerText = `已选 ${draftSet.size} 个地区`;
+                }
+            }
+
+            if (confirmBtn) {
+                confirmBtn.innerText = draftSet.size > 0 ? `确认选择（${draftSet.size}）` : '保存当前选择';
+            }
+
+            if (!listContainer) return;
+
+            if (filteredRegions.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="rounded-[18px] border border-dashed border-gray-200 bg-gray-50/60 px-4 py-8 text-center mt-2">
+                        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-300">
+                            <i class="fa-solid fa-magnifying-glass text-[16px]"></i>
+                        </div>
+                        <p class="text-[13px] font-medium text-gray-500">没有找到匹配地区</p>
+                        <p class="mt-1 text-[11px] text-gray-400">可尝试输入省份全称或简称，例如“内蒙”</p>
+                    </div>
+                `;
+            } else {
+                // To avoid selecting regions already configured in the opposing list,
+                // we disable them or alert the user. However, for simplicity, we just filter them out from the drawer entirely
+                // or let the toggle logic handle overwriting. 
+                // Given the instructions, we can allow overriding by setRegionPreferences.
+                listContainer.innerHTML = filteredRegions.map(region => {
+                    const isSelected = draftSet.has(region.id);
+                    return buildRegionDrawerItem(region, isSelected);
+                }).join('');
+            }
+        }
+
+        function renderRegionExperience() {
+            updateQuickPresetKey();
+            renderRegionPresetSection();
+            renderConsiderRegionPanel();
+            renderAvoidRegionPanel();
+        }
+
+        function buildRegionSubmitPayload() {
+            const considerIdSet = new Set(regionState.considerRegionIds);
+            const avoidIdSet = new Set(regionState.avoidRegionIds);
+            return {
+                regionPreferences: regionState.allRegions.map(region => ({
+                    id: region.id,
+                    name: region.name,
+                    preference: considerIdSet.has(region.id)
+                        ? 'consider'
+                        : avoidIdSet.has(region.id)
+                            ? 'not_consider'
+                            : 'unset'
+                })),
+                selectedRegionIds: regionState.considerRegionIds.slice(),
+                selectedRegionNames: regionState.considerRegionIds.map(regionId => regionIdToNameMap[regionId]),
+                consideredRegionIds: regionState.considerRegionIds.slice(),
+                consideredRegionNames: regionState.considerRegionIds.map(regionId => regionIdToNameMap[regionId]),
+                avoidedRegionIds: regionState.avoidRegionIds.slice(),
+                avoidedRegionNames: regionState.avoidRegionIds.map(regionId => regionIdToNameMap[regionId]),
+                sortedSelectedRegionIds: regionState.sortedConsiderRegionIds.slice(),
+                sortedSelectedRegionNames: regionState.sortedConsiderRegionIds.map(regionId => regionIdToNameMap[regionId]),
+                sortedConsideredRegionIds: regionState.sortedConsiderRegionIds.slice(),
+                sortedConsideredRegionNames: regionState.sortedConsiderRegionIds.map(regionId => regionIdToNameMap[regionId]),
+                quickPresetKey: regionState.quickPresetKey,
+                defaultSelection: regionState.defaultConsiderSelection.slice(),
+                defaultConsiderSelection: regionState.defaultConsiderSelection.slice(),
+                defaultAvoidSelection: regionState.defaultAvoidSelection.slice()
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            syncReadonlyExamContext();
+            regionState.defaultConsiderSelection = normalizeRegionIds(REGION_SELECTION_CONFIG.defaultSelectedIds || []);
+            regionState.defaultAvoidSelection = [];
+            regionState.considerRegionIds = regionState.defaultConsiderSelection.slice();
+            regionState.sortedConsiderRegionIds = regionState.defaultConsiderSelection.slice();
+            regionState.avoidRegionIds = regionState.defaultAvoidSelection.slice();
+            window.__preferenceBootstrapped = true;
+            syncCollegeSelectionWithCurrentType();
+            renderCollegePanel();
+            syncMajorSelectionWithCurrentType();
+            renderMajorPanel();
+            renderRegionExperience();
+        });
+
+    </script>
+
+    <!-- Toast 容器 -->
+    <div id="toast-container"></div>
+</body>
+
+</html>

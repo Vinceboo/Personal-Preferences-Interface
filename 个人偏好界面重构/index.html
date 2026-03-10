@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>望仔智能助手 - 偏好设置高保真原型预览</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .phone-mockup {
+            width: 430px;
+            height: 932px; /* iPhone 14/15 Pro Max size */
+            border: 14px solid #1f2937;
+            border-radius: 55px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .dynamic-island {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 35px;
+            background-color: #000;
+            border-radius: 20px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen py-10 font-sans">
+    <div class="flex flex-col items-center gap-6">
+        <div class="text-center">
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">个人偏好设置 - 高保真交互原型</h1>
+            <p class="text-gray-500 text-sm">请在下方的虚拟手机中体验（支持点击Tab切换、空状态、Toggle 点击特效）</p>
+        </div>
+        
+        <div class="phone-mockup bg-white">
+            <div class="dynamic-island"></div>
+            <!-- 状态栏模拟 -->
+            <div class="absolute top-0 w-full h-12 flex justify-between items-center px-6 pt-3 z-40 text-black text-[15px] font-medium pointer-events-none">
+                <span>10:45</span>
+                <div class="flex gap-1.5 items-center">
+                    <i class="fa-solid fa-signal text-xs"></i>
+                    <i class="fa-solid fa-wifi text-xs"></i>
+                    <i class="fa-solid fa-battery-full"></i>
+                </div>
+            </div>
+            
+            <iframe src="preference.html" class="w-full h-full border-0" title="原型界面"></iframe>
+        </div>
+    </div>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</body>
+</html>
